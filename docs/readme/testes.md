@@ -4,7 +4,7 @@
 pnpm test
 ```
 
-Usa [Vitest](https://vitest.dev) e Testing Library. Por enquanto cobrem a tela de erro; a lógica de pedidos, estados e divisão da conta entra com testes a cada etapa.
+Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) e a tela de erro. A lógica de pedidos, estados e divisão da conta entra com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
 
