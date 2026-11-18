@@ -1,7 +1,7 @@
 {
-  "name": "Pede Ai",
+  "name": "Pede Aí",
   "repo": "pede-ai",
-  "tagline": "Descreva o projeto em uma frase.",
+  "tagline": "Pedidos pela mesa, comanda para cada pessoa e conta dividida.",
   "urls": {
     "demo": "https://pede-ai.vercel.app"
   },
@@ -19,13 +19,20 @@
       "pkg": "tailwindcss"
     },
     {
-      "pkg": "eslint"
+      "pkg": "vitest"
     },
     {
-      "pkg": "vitest"
+      "pkg": "@playwright/test"
     }
   ],
-  "badges_extra": [],
+  "badges_extra": [
+    {
+      "alt": "Status",
+      "label": "status",
+      "message": "em construção",
+      "color": "c2410c"
+    }
+  ],
   "banner": {
     "chips": 4
   },
@@ -36,10 +43,26 @@
   },
   "features": [
     {
-      "title": "Funcionalidade",
-      "desc": "Descreva em uma ou duas frases."
+      "title": "QR code na mesa",
+      "desc": "O cliente escaneia, entra com o código da mesa e faz o pedido pelo celular."
+    },
+    {
+      "title": "Comanda por pessoa",
+      "desc": "Casais e grupos na mesma mesa, cada um com a própria comanda."
+    },
+    {
+      "title": "Cozinha e bar",
+      "desc": "Cada estação vê a própria fila e avisa quando o item fica pronto."
+    },
+    {
+      "title": "Garçom avisado",
+      "desc": "Itens prontos para retirar e chamados da mesa (dúvida ou conta) num só lugar."
+    },
+    {
+      "title": "Conta dividida",
+      "desc": "A conta sai por comanda, com itens divididos, taxa de serviço e couvert."
     }
   ],
   "credits": [],
-  "footer": "Feito com 💚 para quem ..."
+  "footer": "Feito com 💚 para quem já esperou demais pela conta."
 }

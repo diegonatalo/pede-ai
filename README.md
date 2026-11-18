@@ -1,7 +1,7 @@
 <!-- Arquivo gerado pelo readme-kit. Não edite aqui: altere docs/readme/ e rode "readme-kit build". -->
 <div align="center">
 
-<img src="docs/assets/banner.svg" alt="Pede Ai: Descreva o projeto em uma frase. github.com/diegonatalo/pede-ai. Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4" width="100%" />
+<img src="docs/assets/banner.svg" alt="Pede Aí: Pedidos pela mesa, comanda para cada pessoa e conta dividida. github.com/diegonatalo/pede-ai. Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4" width="100%" />
 
 <br />
 
@@ -14,6 +14,7 @@
 ![React](https://img.shields.io/badge/React_19-20232a?style=flat-square&logo=react&logoColor=61dafb)
 ![TypeScript](https://img.shields.io/badge/TypeScript_6-3178c6?style=flat-square&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS_4-06b6d4?style=flat-square&logo=tailwindcss&logoColor=white)
+![Status](https://img.shields.io/badge/status-em_constru%C3%A7%C3%A3o-c2410c?style=flat-square)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-16a34a?style=flat-square)
 
 </div>
@@ -26,8 +27,12 @@
 
 </div>
 
-**Descreva o projeto em uma frase.**<br />
-Descreva o que o projeto faz, para quem e por que existe.
+**Pedidos pela mesa, comanda para cada pessoa e conta dividida.**<br />
+O Pede Aí é um sistema de pedidos para restaurantes. Cada mesa tem um QR code: o cliente escaneia, abre a própria comanda e pede pelo celular. Os itens vão para a fila da cozinha ou do bar, o garçom é avisado quando ficam prontos e leva até a mesa. Pelo app, o cliente também chama o garçom para tirar dúvidas ou pedir a conta.
+
+O caso central é a mesa compartilhada: dois casais ou um grupo de amigos, cada pessoa com a sua comanda, e a conta dividida por comanda (inclusive o item que foi dividido entre várias).
+
+O projeto está em construção, como demo e portfólio.
 
 <br />
 
@@ -39,7 +44,13 @@ Descreva o que o projeto faz, para quem e por que existe.
 
 <div align="center">
 
-<img src="docs/assets/f-01.svg" alt="Funcionalidade: Descreva em uma ou duas frases." width="49%" />
+<img src="docs/assets/f-01.svg" alt="QR code na mesa: O cliente escaneia, entra com o código da mesa e faz o pedido pelo celular." width="49%" />
+<img src="docs/assets/f-02.svg" alt="Comanda por pessoa: Casais e grupos na mesma mesa, cada um com a própria comanda." width="49%" />
+<br />
+<img src="docs/assets/f-03.svg" alt="Cozinha e bar: Cada estação vê a própria fila e avisa quando o item fica pronto." width="49%" />
+<img src="docs/assets/f-04.svg" alt="Garçom avisado: Itens prontos para retirar e chamados da mesa (dúvida ou conta) num só lugar." width="49%" />
+<br />
+<img src="docs/assets/f-05.svg" alt="Conta dividida: A conta sai por comanda, com itens divididos, taxa de serviço e couvert." width="49%" />
 
 </div>
 
@@ -53,7 +64,7 @@ Descreva o que o projeto faz, para quem e por que existe.
 
 <div align="center">
 
-<img src="docs/assets/stack.svg" alt="Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, ESLint 9, Vitest 5" width="100%" />
+<img src="docs/assets/stack.svg" alt="Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Vitest 5, @playwright/test" width="100%" />
 
 </div>
 
@@ -77,16 +88,21 @@ pnpm dev        # http://localhost:3000
 | Comando | O que faz |
 |---|---|
 | `pnpm dev` | Servidor de desenvolvimento |
-| `pnpm build` | Gera o build de produção |
+| `pnpm build` | Checa os tipos e gera o build de produção |
 | `pnpm start` | Serve o build de produção |
 | `pnpm lint` | Roda o ESLint |
-| `pnpm test` | Roda os testes |
-| `pnpm test:coverage` | Descreva o que faz |
-| `pnpm test:watch` | Descreva o que faz |
+| `pnpm test` | Roda os testes (Vitest) |
+| `pnpm test:coverage` | Roda os testes com relatório de cobertura |
+| `pnpm test:watch` | Reexecuta os testes ao salvar |
+| `pnpm test:e2e` | Roda os testes de ponta a ponta (Playwright) |
 
 ### 🔑 Variáveis de ambiente
 
-Nenhuma é necessária.
+Há uma só, e é opcional.
+
+| Variável | Descrição | Se não definir |
+|---|---|---|
+| `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://pede-ai.vercel.app` |
 
 ### 🧪 Testes
 
@@ -94,9 +110,16 @@ Nenhuma é necessária.
 pnpm test
 ```
 
-Descreva o que os testes cobrem.
+Usa [Vitest](https://vitest.dev) e Testing Library. Por enquanto cobrem a tela de erro; a lógica de pedidos, estados e divisão da conta entra com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
+
+Os testes de ponta a ponta (Playwright, em `e2e/`) abrem o app no Chromium contra o build de produção e conferem que as páginas abrem sem erros e que a 404 leva de volta ao início.
+
+```bash
+pnpm exec playwright install chromium   # só na primeira vez
+pnpm test:e2e                           # gera o build e testa contra ele
+```
 
 <br />
 
@@ -107,12 +130,12 @@ Para reexecutar ao salvar: `pnpm test:watch`.
 </div>
 
 ```text
-app/              Descreva
-components/       Descreva
-docs/             Descreva
-hooks/            Descreva
-lib/              Descreva
-public/           Descreva
+app/              Rotas (página inicial, 404, erros, robots, sitemap, imagem OG)
+components/       Corpo das telas
+docs/             Textos e imagens do README (readme-kit)
+e2e/              Testes de ponta a ponta (Playwright)
+hooks/            Estado e efeitos de React
+lib/              Lógica pura e dados do site
 ```
 
 <br />
@@ -127,15 +150,21 @@ public/           Descreva
 
 | Conceito | Regra |
 |---|---|
-| **Exemplo** | Descreva. |
+| **Sessão da mesa** | O garçom abre a mesa quando o grupo senta. Só dá para pedir com a mesa aberta e o código de 4 dígitos. |
+| **Comanda** | Cada pessoa (ou aparelho) tem a sua. O primeiro pedido de cada comanda passa pela confirmação do garçom. |
+| **Item** | Enviado → em preparo → pronto → retirado → entregue. Cada item vai para a cozinha ou para o bar. |
+| **Conta** | Calculada por comanda, em centavos inteiros: itens próprios, partes de itens divididos, taxa de serviço e couvert. |
 
 ### 🌐 Deploy
 
-Descreva onde o projeto é publicado e o que muda ao trocar de domínio.
+Publicado na [Vercel](https://vercel.com), que faz deploy só da branch `main` (`vercel.json`). Para trocar de domínio, defina `NEXT_PUBLIC_SITE_URL` no build.
 
 ### 🧭 Próximos passos
 
-- [ ] Testes automatizados.
+- [ ] Domínio: tipos, estados do pedido e cálculo da conta por comanda.
+- [ ] Telas do cliente, da cozinha, do bar e do garçom.
+- [ ] Banco de dados (Postgres) para funcionar em vários aparelhos.
+- [ ] Visão do gerente, QR codes para imprimir e mapa do salão.
 
 ### 📄 Créditos e licença
 
@@ -161,6 +190,6 @@ Descreva onde o projeto é publicado e o que muda ao trocar de domínio.
 
 <div align="center">
 
-<img src="docs/assets/footer.svg" alt="© 2026 Diego Natalo. Feito com 💚 para quem ..." width="100%" />
+<img src="docs/assets/footer.svg" alt="© 2026 Diego Natalo. Feito com 💚 para quem já esperou demais pela conta." width="100%" />
 
 </div>
