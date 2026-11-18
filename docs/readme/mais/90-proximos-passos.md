@@ -1,0 +1,3 @@
+### 🧭 Próximos passos
+
+- [ ] Testes automatizados.

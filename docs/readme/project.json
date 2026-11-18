@@ -1,0 +1,45 @@
+{
+  "name": "Pede Ai",
+  "repo": "pede-ai",
+  "tagline": "Descreva o projeto em uma frase.",
+  "urls": {
+    "demo": "https://pede-ai.vercel.app"
+  },
+  "stack": [
+    {
+      "pkg": "next"
+    },
+    {
+      "pkg": "react"
+    },
+    {
+      "pkg": "typescript"
+    },
+    {
+      "pkg": "tailwindcss"
+    },
+    {
+      "pkg": "eslint"
+    },
+    {
+      "pkg": "vitest"
+    }
+  ],
+  "badges_extra": [],
+  "banner": {
+    "chips": 4
+  },
+  "demo": {
+    "note": "",
+    "layout": "stack",
+    "shots": []
+  },
+  "features": [
+    {
+      "title": "Funcionalidade",
+      "desc": "Descreva em uma ou duas frases."
+    }
+  ],
+  "credits": [],
+  "footer": "Feito com 💚 para quem ..."
+}
