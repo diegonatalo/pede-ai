@@ -602,5 +602,33 @@ export const createPostgresRegistry = (
         throw error;
       }
     },
+    async resetDemo() {
+      await ready();
+      const demoId = RESTAURANT.id;
+      const demoSessions = db
+        .select({ id: tableSessions.id })
+        .from(tableSessions)
+        .where(eq(tableSessions.restaurantId, demoId));
+      const rows = restaurantRows(db, demoRestaurantData(), pinKey);
+      await db.batch([
+        db.delete(orderItems).where(inArray(orderItems.sessionId, demoSessions)),
+        db.delete(orders).where(inArray(orders.sessionId, demoSessions)),
+        db.delete(waiterCalls).where(inArray(waiterCalls.sessionId, demoSessions)),
+        db.delete(tabs).where(inArray(tabs.sessionId, demoSessions)),
+        db.delete(tableSessions).where(eq(tableSessions.restaurantId, demoId)),
+        db.delete(events).where(eq(events.restaurantId, demoId)),
+        db.delete(staffMembers).where(and(eq(staffMembers.restaurantId, demoId), eq(staffMembers.system, false))),
+        // Configuração e cardápio de volta ao começo (e o bloqueio de PIN zerado).
+        rows.restaurant.onConflictDoUpdate({
+          target: restaurants.id,
+          set: { ...replaceAll(restaurants, ["id"]), staffFailedAttempts: 0, staffLockedUntil: null },
+        }),
+        rows.items.onConflictDoUpdate({ target: menuItems.id, set: replaceAll(menuItems) }),
+        rows.staff.onConflictDoUpdate({
+          target: staffMembers.id,
+          set: { pinKey: sql.raw('excluded."pin_key"'), name: sql.raw('excluded."name"'), active: true, system: true },
+        }),
+      ]);
+    },
   };
 };

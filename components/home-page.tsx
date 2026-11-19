@@ -45,7 +45,7 @@ export const HomePage = () => (
         <li>O garçom retira, entrega, marca as comandas como pagas e fecha a mesa.</li>
       </ol>
       <p className="text-sm text-muted">
-        Os dados ficam só na memória do servidor da demonstração e somem quando ele reinicia.
+        A demonstração é compartilhada e volta ao começo todo dia, às 6h.
       </p>
       <div className="flex flex-wrap gap-3">
         <Link href="/r/demo/garcom" className={BUTTON.primary}>
@@ -63,7 +63,7 @@ export const HomePage = () => (
       <h2 id="titulo-restaurantes" className="text-xl font-bold">
         Tem um restaurante?
       </h2>
-      <p className="text-muted">Crie a sua conta. Em breve, você cadastra o cardápio, as mesas e a equipe.</p>
+      <p className="text-muted">Crie a sua conta e cadastre o restaurante: ele começa com o salão e o cardápio de exemplo, e você entra como gerente.</p>
       <Link href="/conta" className={`${BUTTON.primary} self-start`}>
         Criar conta ou entrar
       </Link>

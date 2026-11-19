@@ -34,6 +34,9 @@ export const createAuth = (env: Env = process.env) => {
     baseURL: authBaseURL(env, SITE_URL),
     secret: authSecret(env),
     database: database(env),
+    // Limite de tentativas só na Vercel. No `next start` local (E2E), todos os testes vêm do mesmo
+    // endereço e criariam contas mais rápido que o limite de cadastro (3 a cada 10 s).
+    rateLimit: { enabled: Boolean(env.VERCEL) },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,

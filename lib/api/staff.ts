@@ -12,6 +12,7 @@ import {
 import { error, fromResult, success, type ApiResult } from "@/lib/api/result";
 import { generateJoinCode } from "@/lib/join-code";
 import { computeDayReport } from "@/lib/metrics";
+import { ownerStaffIdFor } from "@/lib/restaurant-template";
 import type { CallStatus, ItemStatus, StaffMember, TabStatus } from "@/types/domain";
 import type { RestaurantSettings, Store } from "@/types/store";
 
@@ -193,7 +194,8 @@ export const getManagerReport = async (store: Store, actor: StaffActor, since: s
 
 export const getStaffFeed = async (store: Store, after: number): Promise<ApiResult> => {
   const { events, lastSeq } = await store.getEvents(after);
-  return success({ lastSeq, changed: events.length > 0 });
+  // Contagem menor que a da tela: os eventos foram apagados (limpeza da demo); a tela relê tudo.
+  return success({ lastSeq, changed: events.length > 0 || lastSeq < after });
 };
 
 // --- Equipe (só o gerente; o store confere) ---
@@ -210,5 +212,7 @@ export const resetTeamPin = async (store: Store, actor: StaffActor, staffId: str
 
 export const setTeamActive = async (store: Store, actor: StaffActor, staffId: string, body: unknown): Promise<ApiResult> => {
   if (!isRecord(body) || typeof body.active !== "boolean") return error("invalid_input");
+  // Desativar o dono o deixaria fora do próprio restaurante.
+  if (!body.active && staffId === ownerStaffIdFor((await store.getRestaurant()).id)) return error("forbidden");
   return fromResult(await store.setStaffActive(staffId, body.active, actor));
 };
