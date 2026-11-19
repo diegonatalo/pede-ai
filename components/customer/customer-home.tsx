@@ -1,6 +1,8 @@
 "use client";
 
 import { useReducer, useState } from "react";
+import { BillView } from "@/components/customer/bill-view";
+import { CallWaiter } from "@/components/customer/call-waiter";
 import { CartView } from "@/components/customer/cart-view";
 import { CreateTabForm } from "@/components/customer/create-tab-form";
 import { MenuList } from "@/components/customer/menu-list";
@@ -13,7 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/money";
 import { canOrder } from "@/lib/transitions";
 
-type Section = "menu" | "cart" | "orders" | "new-tab";
+type Section = "menu" | "cart" | "orders" | "bill" | "call" | "new-tab";
 
 type Props = { data: CustomerData; refresh: () => Promise<void> };
 
@@ -128,6 +130,8 @@ export const CustomerHome = ({ data, refresh }: Props) => {
         {section === "orders" && (
           <OrdersList view={view} busyItemId={busyItemId} onCancel={(id) => void cancel(id)} onBrowse={() => go("menu")} />
         )}
+        {section === "bill" && <BillView view={view} refresh={refresh} />}
+        {section === "call" && <CallWaiter view={view} tabId={activeTab?.id} refresh={refresh} />}
         {section === "new-tab" && (
           <CreateTabForm
             mode="other"
@@ -156,11 +160,13 @@ export const CustomerHome = ({ data, refresh }: Props) => {
       )}
 
       <nav aria-label="Seções" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
-        <ul className="mx-auto grid max-w-xl grid-cols-2">
+        <ul className="mx-auto grid max-w-xl grid-cols-4">
           {(
             [
               ["menu", "Cardápio"],
               ["orders", "Pedidos"],
+              ["bill", "Conta"],
+              ["call", "Chamar"],
             ] as const
           ).map(([id, label]) => {
             const current = section === id || (id === "menu" && (section === "cart" || section === "new-tab"));
@@ -178,6 +184,9 @@ export const CustomerHome = ({ data, refresh }: Props) => {
                   {label}
                   {id === "orders" && view.items.some((item) => item.status === "ready" || item.status === "picked_up") && (
                     <span className="text-xs font-medium">a caminho!</span>
+                  )}
+                  {id === "call" && view.calls.some((call) => call.status === "acknowledged") && (
+                    <span className="text-xs font-medium">vindo!</span>
                   )}
                 </button>
               </li>

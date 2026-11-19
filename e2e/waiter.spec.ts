@@ -56,7 +56,7 @@ test("o garçom abre a mesa, confirma, entrega, recebe e fecha", async ({ browse
 
   // Recebe e fecha a mesa; o celular do cliente fica sabendo.
   await waiter.getByRole("button", { name: "Mesas" }).click();
-  await waiter.getByRole("button", { name: "Marcar a comanda de Bruno como paga" }).click();
+  await waiter.getByRole("button", { name: "Marcar a comanda de Bruno (Mesa 2) como paga" }).click();
   await waiter.getByRole("button", { name: "Fechar a Mesa 2" }).click();
   await expect(waiter.getByRole("button", { name: "Abrir a Mesa 2" })).toBeVisible();
   await expect(customer.getByRole("heading", { name: "Mesa fechada. Obrigado pela visita!" })).toBeVisible({

@@ -80,7 +80,7 @@ export const TablesPanel = ({ board, busy, run }: Props) => (
                             className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm")}
                             disabled={busy === tab.id}
                             onClick={() => run(tab.id, `/api/staff/tabs/${tab.id}/status`, { to: "paid" })}
-                            aria-label={`Marcar a comanda de ${tab.customerName} como paga`}
+                            aria-label={`Marcar a comanda de ${tab.customerName} (${table.label}) como paga`}
                           >
                             Marcar paga
                           </button>
