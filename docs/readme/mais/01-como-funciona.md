@@ -6,4 +6,5 @@
 | **Comanda** | Cada pessoa (ou aparelho) tem a sua. O primeiro pedido de cada comanda passa pela confirmação do garçom. |
 | **Item** | Enviado → em preparo → pronto → retirado → entregue. Cada item vai para a cozinha ou para o bar. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN do papel (cozinha, garçom ou gerente). |
+| **Duas pessoas ao mesmo tempo** | Cada mesa tem uma versão. Uma gravação só vale se ninguém gravou a mesma mesa desde a leitura; se gravou, o app relê e tenta de novo. |
 | **Conta** | Calculada por comanda, em centavos inteiros: itens próprios, partes de itens divididos, taxa de serviço e couvert. |

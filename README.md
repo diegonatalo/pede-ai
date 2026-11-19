@@ -64,7 +64,7 @@ O projeto está em construção, como demo e portfólio.
 
 <div align="center">
 
-<img src="docs/assets/stack.svg" alt="Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Vitest 5, @playwright/test" width="100%" />
+<img src="docs/assets/stack.svg" alt="Stack: Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, drizzle-orm, Neon Postgres, Vitest 5, @playwright/test" width="100%" />
 
 </div>
 
@@ -95,13 +95,19 @@ pnpm dev        # http://localhost:3000
 | `pnpm test:coverage` | Roda os testes com relatório de cobertura |
 | `pnpm test:watch` | Reexecuta os testes ao salvar |
 | `pnpm test:e2e` | Roda os testes de ponta a ponta (Playwright) |
+| `pnpm db:generate` | Gera uma migração nova a partir de `lib/db/schema.ts` |
+| `pnpm db:migrate` | Aplica as migrações no banco do `.env.local` (conexão direta) |
 
 ### 🔑 Variáveis de ambiente
 
-Todas são opcionais na demonstração.
+Todas são opcionais no computador: sem banco, os dados ficam na memória do servidor.
 
 | Variável | Descrição | Se não definir |
 |---|---|---|
+| `DATABASE_URL` | Postgres (Neon) com pooling, usado pelo app. Criada pela integração Neon da Vercel. | Dados na memória |
+| `DATABASE_URL_UNPOOLED` | Conexão direta, usada pelas migrações (`pnpm db:migrate`). | Usa a `DATABASE_URL` |
+| `PEDE_AI_STORE` | `postgres` para usar o banco no computador. Fora da Vercel, o padrão é a memória, para o `pnpm dev` e o E2E não gravarem no banco de produção. | Memória |
+| `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
 | `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe. Obrigatória com mais de um servidor. | Gera uma chave aleatória a cada início do servidor |
 | `STAFF_PIN_KITCHEN`, `STAFF_PIN_WAITER`, `STAFF_PIN_MANAGER` | PIN de cada papel da equipe. | PINs da demo: `1111`, `2222` e `3333` |
 | `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://pede-ai.vercel.app` |
@@ -112,7 +118,7 @@ Todas são opcionais na demonstração.
 pnpm test
 ```
 
-Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, os números do dia (faturamento, ticket por pessoa, tempos médios de preparo e de entrega, mais pedidos), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) , da cozinha (fila, esgotar item) e do gerente (números, ajustes de taxa, couvert e confirmação), a camada de dados em memória (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
+Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, os números do dia (faturamento, ticket por pessoa, tempos médios de preparo e de entrega, mais pedidos), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) , da cozinha (fila, esgotar item) e do gerente (números, ajustes de taxa, couvert e confirmação), a camada de dados (o mesmo contrato roda na memória e, com `TEST_DATABASE_URL`, no Postgres; tentativas de novo quando duas gravações se cruzam) (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
 
@@ -138,7 +144,7 @@ components/       Corpo das telas (customer/ para o celular do cliente, waiter/,
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
-lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store) e dados de demonstração
+lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e migrações) e dados de demonstração
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 ```
 
@@ -158,13 +164,16 @@ types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 | **Comanda** | Cada pessoa (ou aparelho) tem a sua. O primeiro pedido de cada comanda passa pela confirmação do garçom. |
 | **Item** | Enviado → em preparo → pronto → retirado → entregue. Cada item vai para a cozinha ou para o bar. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN do papel (cozinha, garçom ou gerente). |
+| **Duas pessoas ao mesmo tempo** | Cada mesa tem uma versão. Uma gravação só vale se ninguém gravou a mesma mesa desde a leitura; se gravou, o app relê e tenta de novo. |
 | **Conta** | Calculada por comanda, em centavos inteiros: itens próprios, partes de itens divididos, taxa de serviço e couvert. |
 
 ### 🌐 Deploy
 
 Publicado na [Vercel](https://vercel.com), que faz deploy só da branch `main` (`vercel.json`). Para trocar de domínio, defina `NEXT_PUBLIC_SITE_URL` no build.
 
-A demonstração guarda os dados na memória do servidor: funciona com um processo só (`pnpm start`) e os dados somem quando ele reinicia. Na Vercel, cada requisição pode cair numa instância diferente, então a versão publicada vai depender do banco (Postgres), que é uma etapa própria.
+Na Vercel, os dados ficam no Postgres do Neon (integração da Vercel, que cria a `DATABASE_URL`). No computador, sem `PEDE_AI_STORE=postgres`, ficam na memória do servidor e somem quando ele reinicia.
+
+Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate`, revise a migração em `lib/db/migrations/` e rode `pnpm db:migrate` **antes** de mesclar o PR, para o deploy já encontrar o banco atualizado. Os dados de demonstração (cardápio, mesas, mapa) são gravados sozinhos no primeiro acesso.
 
 ### 🧭 Próximos passos
 
@@ -173,7 +182,7 @@ A demonstração guarda os dados na memória do servidor: funciona com um proces
 - [x] Tela do garçom: login por PIN, abrir mesa, confirmar o primeiro pedido, retirar e entregar, receber e fechar.
 - [x] Tela da cozinha e do bar: fila em três colunas, filtro por estação e item esgotado.
 - [x] Chamar o garçom e conta pelo celular, com divisão de itens em partes.
-- [ ] Banco de dados (Postgres) para funcionar em vários aparelhos.
+- [x] Banco de dados (Postgres no Neon, com Drizzle) para funcionar em vários aparelhos.
 - [x] Tela do gerente: salão, números do dia e ajustes (taxa, couvert, confirmação do primeiro pedido).
 - [ ] QR codes para imprimir e mapa do salão.
 

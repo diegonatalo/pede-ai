@@ -19,6 +19,10 @@
       "pkg": "tailwindcss"
     },
     {
+      "pkg": "drizzle-orm"
+    },
+    "Neon Postgres",
+    {
       "pkg": "vitest"
     },
     {

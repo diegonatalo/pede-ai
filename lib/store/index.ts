@@ -1,20 +1,34 @@
+import { createStore } from "@/lib/store/engine";
 import { createMemoryStore } from "@/lib/store/memory";
+import { createPostgresRepository } from "@/lib/store/postgres";
 import type { Store } from "@/types/store";
 
 // Guardado no globalThis para sobreviver ao recarregamento de módulos do `next dev`
 // (e porque cada rota pode carregar a própria cópia deste módulo).
-const holder = globalThis as typeof globalThis & { __pedeAiStore?: Store };
+const holder = globalThis as typeof globalThis & { __pedeAiStore?: Store; __pedeAiPostgres?: Store };
 
 const methodsOf = (store: Store) => Object.keys(store).sort().join(",");
 
+type Env = Record<string, string | undefined>;
+
 /**
- * Camada de dados do servidor. Por enquanto só existe o adaptador em memória;
- * o do Postgres entra quando houver `DATABASE_URL` (etapa do banco).
+ * Qual banco usar. Postgres só na Vercel (`VERCEL`) ou quando pedido (`PEDE_AI_STORE=postgres`):
+ * o `.env.local` tem a `DATABASE_URL` de produção, e o `pnpm dev` e o E2E não devem gravar lá.
+ */
+export const storeKind = (env: Env): "postgres" | "memory" =>
+  env.DATABASE_URL && (env.VERCEL || env.PEDE_AI_STORE === "postgres") ? "postgres" : "memory";
+
+/**
+ * Camada de dados do servidor: Postgres (Neon) em produção, memória no resto.
  *
- * No `next dev`, um store guardado antes de o adaptador ganhar métodos novos é trocado por um
- * novo (com os dados zerados). Mudanças só dentro de um método pedem reiniciar o `pnpm dev`.
+ * No `next dev`, um store em memória guardado antes de o motor ganhar métodos novos é trocado
+ * por um novo (com os dados zerados). Mudanças só dentro de um método pedem reiniciar o `pnpm dev`.
  */
 export const getStore = (): Store => {
+  if (storeKind(process.env) === "postgres") {
+    holder.__pedeAiPostgres ??= createStore(createPostgresRepository(process.env.DATABASE_URL as string));
+    return holder.__pedeAiPostgres;
+  }
   const fresh = holder.__pedeAiStore ? null : createMemoryStore();
   if (fresh) {
     holder.__pedeAiStore = fresh;

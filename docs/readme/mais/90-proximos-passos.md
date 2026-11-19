@@ -5,6 +5,6 @@
 - [x] Tela do garçom: login por PIN, abrir mesa, confirmar o primeiro pedido, retirar e entregar, receber e fechar.
 - [x] Tela da cozinha e do bar: fila em três colunas, filtro por estação e item esgotado.
 - [x] Chamar o garçom e conta pelo celular, com divisão de itens em partes.
-- [ ] Banco de dados (Postgres) para funcionar em vários aparelhos.
+- [x] Banco de dados (Postgres no Neon, com Drizzle) para funcionar em vários aparelhos.
 - [x] Tela do gerente: salão, números do dia e ajustes (taxa, couvert, confirmação do primeiro pedido).
 - [ ] QR codes para imprimir e mapa do salão.
