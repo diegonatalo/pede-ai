@@ -37,6 +37,7 @@ const STATUS: Record<ApiError, number> = {
   item_unavailable: 409,
   cannot_close: 409,
   already_open: 409,
+  conflict: 409,
   unsupported_media_type: 415,
   locked: 429,
 };
@@ -60,6 +61,7 @@ export const ERROR_MESSAGES: Record<ApiError, string> = {
   item_unavailable: "Um dos itens acabou de esgotar.",
   cannot_close: "Ainda há comandas sem pagar.",
   already_open: "Esta mesa já está aberta.",
+  conflict: "Outra pessoa mexeu nesta mesa ao mesmo tempo. Tente de novo.",
   unsupported_media_type: "Envie os dados em JSON.",
   locked: "Muitas tentativas. Espere alguns minutos e peça ajuda ao garçom.",
 };

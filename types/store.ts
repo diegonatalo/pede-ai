@@ -31,6 +31,8 @@ export type StoreError =
   | "already_open"
   | "wrong_code"
   | "locked"
+  /** Outra pessoa mudou a mesma mesa ao mesmo tempo, mais de uma vez seguida. */
+  | "conflict"
   | SharesError;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: StoreError };
@@ -128,5 +130,64 @@ export type Store = {
    * Eventos depois de `afterSeq` e o último `seq` existente. Com `sessionId`, só os daquela
    * mesa e os gerais (cardápio, configuração).
    */
+  getEvents(afterSeq: number, sessionId?: string): Promise<{ events: StoreEvent[]; lastSeq: number }>;
+};
+
+/** Dados secretos da mesa: só o garçom vê o código; erros seguidos bloqueiam por alguns minutos. */
+export type SessionSecret = { joinCode: string; failedAttempts: number; lockedUntil?: number };
+
+/** Tudo de uma mesa, como o repositório guarda. `version` sobe a cada gravação. */
+export type SessionRecord = {
+  session: TableSession;
+  secret: SessionSecret;
+  tabs: Tab[];
+  orders: Order[];
+  items: OrderItem[];
+  calls: WaiterCall[];
+  version: number;
+};
+
+/** O que um comando mudou numa mesa: só as linhas novas ou alteradas. */
+export type SessionChanges = {
+  session?: TableSession;
+  secret?: SessionSecret;
+  tabs?: Tab[];
+  orders?: Order[];
+  items?: OrderItem[];
+  calls?: WaiterCall[];
+};
+
+export type NewEvent = Omit<StoreEvent, "seq">;
+
+export type SessionRef = { openAtTable: string } | { tabId: string } | { itemId: string } | { callId: string };
+
+/**
+ * Onde os dados ficam (memória ou Postgres). Só carrega e grava; as regras ficam em
+ * `lib/store/engine.ts`, iguais para os dois. Listas sempre na ordem em que foram criadas.
+ */
+export type Repository = {
+  getRestaurant(): Promise<Restaurant>;
+  saveRestaurant(restaurant: Restaurant, event: NewEvent): Promise<void>;
+  listTables(): Promise<Table[]>;
+  listMapSpots(): Promise<MapSpot[]>;
+  getMenu(): Promise<Menu>;
+  saveMenuItem(item: MenuItem, event: NewEvent): Promise<void>;
+
+  findSessionId(ref: SessionRef): Promise<string | null>;
+  loadSession(sessionId: string): Promise<SessionRecord | null>;
+  /** Mesas abertas, ou abertas e as criadas a partir de `since` (ISO). */
+  listSessions(filter: { since?: IsoDateTime }): Promise<SessionRecord[]>;
+  /** Cria a mesa. `false` se a mesa já tem uma sessão aberta. */
+  insertSession(record: Omit<SessionRecord, "version">, event: NewEvent): Promise<boolean>;
+  /**
+   * Grava as mudanças só se a mesa ainda está na versão `expectedVersion` (ninguém mexeu
+   * desde a leitura). `false` em caso de conflito; quem chama lê de novo e tenta outra vez.
+   */
+  saveSession(
+    sessionId: string,
+    expectedVersion: number,
+    changes: SessionChanges,
+    event: NewEvent | null,
+  ): Promise<boolean>;
   getEvents(afterSeq: number, sessionId?: string): Promise<{ events: StoreEvent[]; lastSeq: number }>;
 };
