@@ -3,7 +3,7 @@
   "repo": "pede-ai",
   "tagline": "Pedidos pela mesa, comanda para cada pessoa e conta dividida.",
   "urls": {
-    "demo": "https://pede-ai.vercel.app"
+    "demo": "https://dn-pede-ai.vercel.app"
   },
   "stack": [
     {

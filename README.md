@@ -5,7 +5,7 @@
 
 <br />
 
-<a href="https://pede-ai.vercel.app"><img src="docs/assets/btn-demo.svg" alt="Abrir o app ↗" height="46" /></a>
+<a href="https://dn-pede-ai.vercel.app"><img src="docs/assets/btn-demo.svg" alt="Abrir o app ↗" height="46" /></a>
 <a href="https://github.com/diegonatalo/pede-ai"><img src="docs/assets/btn-code.svg" alt="Código ↗" height="46" /></a>
 
 <br />
@@ -110,7 +110,7 @@ Todas são opcionais no computador: sem banco, os dados ficam na memória do ser
 | `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
 | `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe. Obrigatória com mais de um servidor. | Gera uma chave aleatória a cada início do servidor |
 | `STAFF_PIN_KITCHEN`, `STAFF_PIN_WAITER`, `STAFF_PIN_MANAGER` | PIN de cada papel da equipe. | PINs da demo: `1111`, `2222` e `3333` |
-| `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://pede-ai.vercel.app` |
+| `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://dn-pede-ai.vercel.app` |
 
 ### 🧪 Testes
 
