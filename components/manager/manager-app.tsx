@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MenuEditor } from "@/components/manager/menu-editor";
 import { QrSheet } from "@/components/manager/qr-sheet";
 import { ReportPanel } from "@/components/manager/report-panel";
 import { SettingsForm } from "@/components/manager/settings-form";
@@ -15,12 +16,13 @@ import { useStaffOverview } from "@/hooks/use-staff-overview";
 import { cn } from "@/lib/cn";
 import { tableBoard } from "@/lib/selectors";
 
-type Section = "floor" | "report" | "qr" | "team" | "settings";
+type Section = "floor" | "report" | "menu" | "team" | "settings";
 
+// Até 5 seções (barra de abas no celular): os QR codes ficam nos ajustes, com a configuração do salão.
 const SECTIONS: [Section, string][] = [
   ["floor", "Salão"],
   ["report", "Números"],
-  ["qr", "QR codes"],
+  ["menu", "Cardápio"],
   ["team", "Equipe"],
   ["settings", "Ajustes"],
 ];
@@ -118,15 +120,25 @@ export const ManagerApp = () => {
               {reportMessage || "Carregando os números…"}
             </p>
           ))}
-        {section === "qr" && <QrSheet tables={data.tables} />}
+        {section === "menu" && <MenuEditor menu={data.menu} busy={busy} run={run} />}
         {section === "team" && <TeamPanel meId={data.me?.staffId} />}
         {section === "settings" && (
-          <SettingsForm
-            // Recria o formulário só quando a configuração muda (não a cada pedido, o que apagaria o que está sendo digitado).
-            key={`${data.restaurant.serviceFeePercent}-${data.restaurant.couvertCents}-${data.restaurant.requireFirstOrderApproval}`}
-            restaurant={data.restaurant}
-            onSaved={refresh}
-          />
+          <div className="flex flex-col gap-8">
+            <div className="print:hidden">
+              <SettingsForm
+                // Recria o formulário só quando a configuração muda (não a cada pedido, o que apagaria o que está sendo digitado).
+                key={`${data.restaurant.serviceFeePercent}-${data.restaurant.couvertCents}-${data.restaurant.requireFirstOrderApproval}`}
+                restaurant={data.restaurant}
+                onSaved={refresh}
+              />
+            </div>
+            <section aria-labelledby="titulo-qr" className="flex flex-col gap-4">
+              <h2 id="titulo-qr" className="text-xl font-bold print:hidden">
+                QR codes das mesas
+              </h2>
+              <QrSheet tables={data.tables} />
+            </section>
+          </div>
         )}
       </main>
     </div>

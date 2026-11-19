@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/use-restaurant";
 
 /**
  * Executa comandos da equipe (`POST` com `?role=`), relê a tela e guarda a mensagem de erro.
- * `busy` diz qual botão está em andamento (pela chave passada em `run`).
+ * `busy` diz qual botão está em andamento (pela chave passada em `run`), e `run` diz se deu certo.
  */
 export const useStaffCommand = (role: StaffRole, refresh: () => Promise<void>) => {
   const apiRequest = useApi();
@@ -21,6 +21,7 @@ export const useStaffCommand = (role: StaffRole, refresh: () => Promise<void>) =
       setBusy(null);
       if (!response.ok) setMessage(response.message);
       await refresh();
+      return response.ok;
     },
     [apiRequest, role, refresh],
   );

@@ -1,6 +1,7 @@
 import { roleOf, staffIdOf } from "@/lib/actor";
 import { isStaffRole } from "@/lib/api/identity";
 import { validateShares } from "@/lib/billing";
+import { applyMenuChange } from "@/lib/menu-editor";
 import { defaultStaffPinKey, generateStaffPin, isStaffPin, type StaffPinKey } from "@/lib/staff-pin";
 import {
   LIMITS,
@@ -158,6 +159,15 @@ export const createStore = (
       const updated: MenuItem = { ...menuItem, available };
       await repo.saveMenuItem(updated, event("item_availability_changed", actor, menuItemId));
       return ok(updated);
+    },
+
+    async editMenu(change, actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      const restaurant = await repo.getRestaurant();
+      const applied = applyMenuChange(await repo.getMenu(), change, { restaurantId: restaurant.id, newId });
+      if (!applied.ok) return applied;
+      await repo.saveMenu(applied.value.menu, event("menu_updated", actor, applied.value.entityId));
+      return ok(applied.value.menu);
     },
 
     async openSession(tableId, joinCode, actor) {

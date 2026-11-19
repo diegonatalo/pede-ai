@@ -1,4 +1,4 @@
-import { and, asc, eq, getTableColumns, gt, gte, inArray, isNull, max, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, gt, gte, inArray, isNull, max, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
@@ -345,6 +345,40 @@ export const createPostgresRepository = (
         db.update(menuItems).set(fields).where(and(eq(menuItems.id, id), eq(menuItems.restaurantId, restaurantId))),
         db.insert(events).values(eventRow(event, restaurantId)),
       ]);
+    },
+
+    async saveMenu(menu, event) {
+      await ready();
+      const ownCategory = eq(menuCategories.restaurantId, restaurantId);
+      const ownItem = eq(menuItems.restaurantId, restaurantId);
+      const categoryIds = menu.categories.map((category) => category.id);
+      const itemIds = menu.items.map((item) => item.id);
+      const writes: BatchItem<"pg">[] = [];
+      // Upsert só troca linhas do próprio restaurante (`setWhere`); ids de outro ficam como estão.
+      if (menu.categories.length > 0) {
+        writes.push(
+          db
+            .insert(menuCategories)
+            .values(menu.categories.map((category, position) => ({ ...category, restaurantId, position })))
+            .onConflictDoUpdate({ target: menuCategories.id, set: replaceAll(menuCategories, ["id"]), setWhere: ownCategory }),
+        );
+      }
+      if (menu.items.length > 0) {
+        writes.push(
+          db
+            .insert(menuItems)
+            .values(menu.items.map((item, position) => ({ ...item, restaurantId, position })))
+            .onConflictDoUpdate({ target: menuItems.id, set: replaceAll(menuItems, ["id"]), setWhere: ownItem }),
+        );
+      }
+      writes.push(
+        db.delete(menuItems).where(itemIds.length > 0 ? and(ownItem, notInArray(menuItems.id, itemIds)) : ownItem),
+        db
+          .delete(menuCategories)
+          .where(categoryIds.length > 0 ? and(ownCategory, notInArray(menuCategories.id, categoryIds)) : ownCategory),
+        db.insert(events).values(eventRow(event, restaurantId)),
+      );
+      await db.batch(writes as Batch);
     },
 
     async findSessionId(ref) {

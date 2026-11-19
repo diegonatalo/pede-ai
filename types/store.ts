@@ -1,4 +1,5 @@
 import type { SharesError } from "@/lib/billing";
+import type { MenuChange } from "@/lib/menu-editor";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import type {
   Actor,
@@ -38,6 +39,10 @@ export type StoreError =
   /** Outra pessoa mudou a mesma mesa ao mesmo tempo, mais de uma vez seguida. */
   | "conflict"
   | "wrong_pin"
+  /** Categoria com itens não pode ser excluída. */
+  | "category_not_empty"
+  /** Cardápio no limite de categorias ou de itens. */
+  | "menu_full"
   | SharesError;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: StoreError };
@@ -52,6 +57,7 @@ export type EventType =
   | "item_status_changed"
   | "item_shares_changed"
   | "item_availability_changed"
+  | "menu_updated"
   | "call_created"
   | "call_status_changed"
   | "restaurant_updated"
@@ -101,6 +107,8 @@ export type Store = {
   listMapSpots(): Promise<MapSpot[]>;
   getMenu(): Promise<Menu>;
   setItemAvailability(menuItemId: string, available: boolean, actor: Actor): Promise<Result<MenuItem>>;
+  /** Gerente cria, edita, ordena ou exclui itens e categorias. Devolve o cardápio novo. */
+  editMenu(change: MenuChange, actor: Actor): Promise<Result<Menu>>;
 
   openSession(tableId: string, joinCode: string, actor: Actor): Promise<Result<TableSession>>;
   /** Código da mesa, para o garçom mostrar ao cliente. */
@@ -194,6 +202,8 @@ export type Repository = {
   listMapSpots(): Promise<MapSpot[]>;
   getMenu(): Promise<Menu>;
   saveMenuItem(item: MenuItem, event: NewEvent): Promise<void>;
+  /** Troca o cardápio inteiro (a ordem das listas é a ordem de exibição), numa gravação só. */
+  saveMenu(menu: Menu, event: NewEvent): Promise<void>;
 
   findSessionId(ref: SessionRef): Promise<string | null>;
   loadSession(sessionId: string): Promise<SessionRecord | null>;

@@ -12,7 +12,11 @@ describe("useStaffCommand", () => {
     const refresh = vi.fn(async () => {});
     const { result } = renderHook(() => useStaffCommand("kitchen", refresh));
 
-    await act(() => result.current.run("i1", "/api/staff/items/i1/status", { to: "preparing" }));
+    let ok = false;
+    await act(async () => {
+      ok = await result.current.run("i1", "/api/staff/items/i1/status", { to: "preparing" });
+    });
+    expect(ok).toBe(true);
 
     const [url, init] = spy.mock.calls[0];
     expect(url).toBe("/api/staff/items/i1/status?role=kitchen");
