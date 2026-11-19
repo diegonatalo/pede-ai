@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import type { StaffRole } from "@/lib/api/identity";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 
 export const ROLE_LABEL: Record<StaffRole, string> = {
   kitchen: "Cozinha e bar",
@@ -15,6 +15,7 @@ type Props = { role: StaffRole; onLoggedIn: () => void };
 
 /** Entrada da equipe com o PIN do papel. O navegador pode entrar em mais de um papel. */
 export const StaffLogin = ({ role, onLoggedIn }: Props) => {
+  const apiRequest = useApi();
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useFeed } from "@/hooks/use-feed";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
+import type { Api } from "@/lib/api-client";
 import type { CustomerView } from "@/lib/views";
 import type { Menu } from "@/types/store";
 
@@ -20,7 +21,7 @@ export type CustomerState =
   | { status: "error"; message: string };
 
 /** Lê a mesa e o cardápio e diz qual é o próximo estado, a partir do atual. */
-const load = async (): Promise<(current: CustomerState) => CustomerState> => {
+const load = async (apiRequest: Api): Promise<(current: CustomerState) => CustomerState> => {
   const [view, menu] = await Promise.all([apiRequest<ViewResponse>("/api/customer"), apiRequest<Menu>("/api/menu")]);
   if (view.ok && view.data.state === "guest") return () => ({ status: "guest" });
   if (view.ok && view.data.state === "closed") return () => ({ status: "closed" });
@@ -35,22 +36,23 @@ const load = async (): Promise<(current: CustomerState) => CustomerState> => {
 
 /** Mesa e cardápio do cliente, atualizados pelo polling do feed. */
 export const useCustomerView = () => {
+  const apiRequest = useApi();
   const [state, setState] = useState<CustomerState>({ status: "loading" });
 
   const refresh = useCallback(async () => {
-    setState(await load());
-  }, []);
+    setState(await load(apiRequest));
+  }, [apiRequest]);
 
   useEffect(() => {
     // A primeira leitura só acontece no navegador, onde está o cookie do aparelho.
     let active = true;
-    void load().then((next) => {
+    void load(apiRequest).then((next) => {
       if (active) setState(next);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [apiRequest]);
 
   const lastSeq = state.status === "ready" ? state.data.view.lastSeq : 0;
   useFeed(state.status === "ready" ? "/api/customer/feed" : null, lastSeq, refresh);

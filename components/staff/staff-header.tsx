@@ -3,7 +3,7 @@
 import { ROLE_LABEL } from "@/components/staff/staff-login";
 import { BUTTON } from "@/components/ui/styles";
 import type { StaffRole } from "@/lib/api/identity";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -18,6 +18,7 @@ type Props = {
 };
 
 export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggleSound, onLoggedOut }: Props) => {
+  const apiRequest = useApi();
   const logout = async () => {
     await apiRequest("/api/staff/logout", { method: "POST", body: { role } });
     onLoggedOut();

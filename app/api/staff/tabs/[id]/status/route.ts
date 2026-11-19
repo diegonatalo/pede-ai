@@ -1,9 +1,8 @@
 import type { NextRequest } from "next/server";
 import { handleStaff } from "@/lib/api/http";
 import { setStaffTabStatus } from "@/lib/api/staff";
-import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/staff/tabs/[id]/status">) {
   const { id: tabId } = await ctx.params;
-  return handleStaff(request, (actor, body) => setStaffTabStatus(getStore(), actor, tabId, body));
+  return handleStaff(request, (actor, body, store) => setStaffTabStatus(store, actor, tabId, body));
 }

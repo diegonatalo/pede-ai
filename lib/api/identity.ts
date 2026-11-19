@@ -11,16 +11,21 @@ export type CustomerIdentity = { sessionId: string; tabIds: string[]; exp: numbe
 export type StaffSeat = { id: string; name: string };
 
 /**
- * Aparelho da equipe: quem entrou em cada tela (a demo abre várias no mesmo navegador,
- * e o gerente pode usar a do garçom com o próprio PIN).
+ * Aparelho da equipe: quem entrou em cada tela de cada restaurante (a demo abre várias telas no
+ * mesmo navegador, e o dono pode estar na demo e no próprio restaurante). Chave: `restaurante:tela`.
  */
-export type StaffIdentity = { seats: Partial<Record<StaffRole, StaffSeat>>; exp: number };
+export type StaffIdentity = { seats: Partial<Record<string, StaffSeat>>; exp: number };
+
+export const seatKey = (restaurantId: string, role: StaffRole) => `${restaurantId}:${role}`;
+
+const SEAT_KEY = /^[^:]+:(kitchen|waiter|manager)$/;
 
 /** Quem está agindo numa tela da equipe: o papel da tela e a pessoa. Só o papel nos testes. */
 export type StaffActor = StaffRole | { role: StaffRole; staffId: string; name: string };
 
-export const rolesOf = (identity: StaffIdentity | null): StaffRole[] =>
-  identity ? STAFF_ROLES.filter((role) => identity.seats[role]) : [];
+/** Telas do restaurante em que alguém entrou com PIN neste aparelho. */
+export const rolesOf = (identity: StaffIdentity | null, restaurantId: string): StaffRole[] =>
+  identity ? STAFF_ROLES.filter((role) => identity.seats[seatKey(restaurantId, role)]) : [];
 
 export const IDENTITY_TTL_MS = 12 * 60 * 60 * 1000;
 
@@ -46,10 +51,10 @@ export const parseStaffIdentity = (value: unknown, nowMs: number): StaffIdentity
   if (!isRecord(value)) return null;
   const { seats, exp } = value;
   if (typeof exp !== "number" || exp <= nowMs || !isRecord(seats)) return null;
-  const parsed: Partial<Record<StaffRole, StaffSeat>> = {};
-  for (const [role, seat] of Object.entries(seats)) {
-    if (!isStaffRole(role) || !isSeat(seat)) return null;
-    parsed[role] = { id: seat.id, name: seat.name };
+  const parsed: Partial<Record<string, StaffSeat>> = {};
+  for (const [key, seat] of Object.entries(seats)) {
+    if (!SEAT_KEY.test(key) || !isSeat(seat)) return null;
+    parsed[key] = { id: seat.id, name: seat.name };
   }
   return Object.keys(parsed).length > 0 ? { seats: parsed, exp } : null;
 };

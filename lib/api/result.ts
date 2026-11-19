@@ -7,7 +7,8 @@ export type ApiError =
   | "not_joined"
   | "not_logged_in"
   | "wrong_pin"
-  | "wrong_screen";
+  | "wrong_screen"
+  | "restaurant_not_found";
 
 /**
  * Resposta de um serviço da API, sem depender do Next: os Route Handlers só a convertem.
@@ -33,6 +34,7 @@ const STATUS: Record<ApiError, number> = {
   forbidden: 403,
   wrong_screen: 403,
   not_found: 404,
+  restaurant_not_found: 404,
   invalid_transition: 409,
   session_closed: 409,
   tab_closed: 409,
@@ -58,6 +60,7 @@ export const ERROR_MESSAGES: Record<ApiError, string> = {
   not_logged_in: "Entre com o PIN da equipe.",
   forbidden: "Você não pode fazer isso.",
   not_found: "Não encontrado.",
+  restaurant_not_found: "Restaurante não encontrado. Confira o endereço.",
   invalid_transition: "Isso não pode ser feito agora.",
   session_closed: "Esta mesa já foi fechada.",
   tab_closed: "Esta comanda não aceita novos pedidos.",

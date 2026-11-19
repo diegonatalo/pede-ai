@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { LIMITS } from "@/lib/store/input";
 import type { Tab } from "@/types/domain";
 
@@ -15,6 +15,7 @@ type Props = {
 
 /** Abre uma comanda: nome que aparece para a mesa e para o garçom, e quantas pessoas ela cobre. */
 export const CreateTabForm = ({ mode, onCreated, onCancel }: Props) => {
+  const apiRequest = useApi();
   const [name, setName] = useState("");
   const [people, setPeople] = useState(1);
   const [message, setMessage] = useState("");

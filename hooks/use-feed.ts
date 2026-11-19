@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 
 export const FEED_INTERVAL_MS = 3000;
 
@@ -16,6 +16,7 @@ export const useFeed = (
   onChange: () => void,
   intervalMs = FEED_INTERVAL_MS,
 ) => {
+  const apiRequest = useApi();
   const seq = useRef(lastSeq);
   const handler = useRef(onChange);
 
@@ -60,5 +61,5 @@ export const useFeed = (
       window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [url, intervalMs]);
+  }, [apiRequest, url, intervalMs]);
 };

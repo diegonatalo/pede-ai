@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useFeed } from "@/hooks/use-feed";
 import type { StaffRole } from "@/lib/api/identity";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
+import type { Api } from "@/lib/api-client";
 import type { Restaurant, Table } from "@/types/domain";
 import type { Menu, SessionSnapshot } from "@/types/store";
 
@@ -25,7 +26,7 @@ export type StaffState =
   | { status: "ready"; data: StaffOverview }
   | { status: "error"; message: string };
 
-const load = async (role: StaffRole): Promise<(current: StaffState) => StaffState> => {
+const load = async (apiRequest: Api, role: StaffRole): Promise<(current: StaffState) => StaffState> => {
   // `me` responde sempre 200: perguntar antes evita um 401 no console de quem não entrou.
   const me = await apiRequest<{ roles: string[] }>("/api/staff/me");
   if (me.ok && !me.data.roles.includes(role)) return () => ({ status: "login" });
@@ -39,21 +40,22 @@ const load = async (role: StaffRole): Promise<(current: StaffState) => StaffStat
 
 /** Mesas abertas, cardápio e configuração para a tela de um papel da equipe, com polling. */
 export const useStaffOverview = (role: StaffRole) => {
+  const apiRequest = useApi();
   const [state, setState] = useState<StaffState>({ status: "loading" });
 
   const refresh = useCallback(async () => {
-    setState(await load(role));
-  }, [role]);
+    setState(await load(apiRequest, role));
+  }, [apiRequest, role]);
 
   useEffect(() => {
     let active = true;
-    void load(role).then((next) => {
+    void load(apiRequest, role).then((next) => {
       if (active) setState(next);
     });
     return () => {
       active = false;
     };
-  }, [role]);
+  }, [apiRequest, role]);
 
   const lastSeq = state.status === "ready" ? state.data.lastSeq : 0;
   useFeed(state.status === "ready" ? `/api/staff/feed?role=${role}` : null, lastSeq, refresh);

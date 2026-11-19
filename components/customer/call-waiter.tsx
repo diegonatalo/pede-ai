@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { CALL_REASON_LABEL, CALL_STATUS_LABEL } from "@/lib/labels";
 import { LIMITS } from "@/lib/store/input";
 import type { CustomerView } from "@/lib/views";
@@ -15,6 +15,7 @@ const REASONS: CallReason[] = ["question", "other"];
 
 /** Chama o garçom à mesa e mostra os chamados em andamento. */
 export const CallWaiter = ({ view, tabId, refresh }: Props) => {
+  const apiRequest = useApi();
   const [reason, setReason] = useState<CallReason>("question");
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);

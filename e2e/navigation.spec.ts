@@ -9,6 +9,10 @@ const PAGES = [
   { path: "/garcom", heading: "Garçom" },
   { path: "/cozinha", heading: "Cozinha e bar" },
   { path: "/gerente", heading: "Gerente" },
+  { path: "/r/demo/mesa/mesa-1", heading: "A mesa ainda não foi aberta" },
+  { path: "/r/demo/garcom", heading: "Garçom" },
+  { path: "/r/demo/cozinha", heading: "Cozinha e bar" },
+  { path: "/r/demo/gerente", heading: "Gerente" },
   { path: "/conta", heading: "Entrar na sua conta" },
 ];
 

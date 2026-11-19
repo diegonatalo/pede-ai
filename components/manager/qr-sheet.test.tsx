@@ -15,7 +15,7 @@ describe("QrSheet", () => {
     expect(codes).toHaveLength(3);
     expect(codes[0].innerHTML.startsWith("<svg")).toBe(true);
     expect(screen.getByRole("heading", { name: "Mesa 2" })).toBeInTheDocument();
-    expect(screen.getByText(`${window.location.origin}/mesa/mesa-1`)).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/r/demo/mesa/mesa-1`)).toBeInTheDocument();
   });
 
   it("avisa quando os links apontam para o computador local", async () => {

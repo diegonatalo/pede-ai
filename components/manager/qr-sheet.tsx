@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BUTTON, CARD } from "@/components/ui/styles";
+import { useRestaurantSlug } from "@/hooks/use-restaurant";
 import { qrSvg, tableUrl } from "@/lib/qr";
 import type { Table } from "@/types/domain";
 
@@ -16,6 +17,7 @@ const isLocal = (origin: string) => /\/\/(localhost|127\.0\.0\.1|\[::1\])(:|$)/.
  * Os links usam o endereço do site aberto: imprima pela versão publicada.
  */
 export const QrSheet = ({ tables }: Props) => {
+  const slug = useRestaurantSlug();
   const [codes, setCodes] = useState<Code[] | null>(null);
   const [origin, setOrigin] = useState("");
 
@@ -25,7 +27,7 @@ export const QrSheet = ({ tables }: Props) => {
     const here = window.location.origin;
     void Promise.all(
       tables.map(async (table) => {
-        const url = tableUrl(here, table.id);
+        const url = tableUrl(here, slug, table.id);
         return { tableId: table.id, url, svg: await qrSvg(url) };
       }),
     ).then((generated) => {
@@ -36,7 +38,7 @@ export const QrSheet = ({ tables }: Props) => {
     return () => {
       active = false;
     };
-  }, [tables]);
+  }, [slug, tables]);
 
   if (!codes) {
     return (

@@ -1,8 +1,8 @@
-import { connection } from "next/server";
-import { getStore } from "@/lib/store";
+import type { NextRequest } from "next/server";
+import { handlePublic } from "@/lib/api/http";
+import { success } from "@/lib/api/result";
 
-export async function GET() {
-  // Sem isso o cardápio seria congelado no build, e o item esgotado não sumiria.
-  await connection();
-  return Response.json(await getStore().getMenu(), { headers: { "cache-control": "no-store" } });
+export async function GET(request: NextRequest) {
+  // Lê o restaurante da requisição: nada aqui é congelado no build, e o item esgotado some na hora.
+  return handlePublic(request, async (store) => success(await store.getMenu()));
 }

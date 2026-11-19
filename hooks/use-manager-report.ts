@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { startOfLocalDay, type DayReport } from "@/lib/metrics";
 
 /**
@@ -9,6 +9,7 @@ import { startOfLocalDay, type DayReport } from "@/lib/metrics";
  * O início do dia é calculado no navegador, no fuso de quem está olhando.
  */
 export const useManagerReport = (enabled: boolean, lastSeq: number) => {
+  const apiRequest = useApi();
   const [report, setReport] = useState<DayReport | null>(null);
   const [message, setMessage] = useState("");
 
@@ -28,7 +29,7 @@ export const useManagerReport = (enabled: boolean, lastSeq: number) => {
     return () => {
       active = false;
     };
-  }, [enabled, lastSeq]);
+  }, [apiRequest, enabled, lastSeq]);
 
   return { report, message };
 };

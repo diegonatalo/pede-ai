@@ -4,5 +4,5 @@ import { rolesOf } from "@/lib/api/identity";
 import { success } from "@/lib/api/result";
 
 export async function GET(request: NextRequest) {
-  return handleStaffSession(request, (identity) => success({ roles: rolesOf(identity) }));
+  return handleStaffSession(request, (identity, _body, restaurant) => success({ roles: rolesOf(identity, restaurant.id) }));
 }

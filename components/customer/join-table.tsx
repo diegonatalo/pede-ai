@@ -2,17 +2,19 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
-import { apiRequest, type ApiResponse } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
+import type { Api, ApiResponse } from "@/lib/api-client";
 import type { Table } from "@/types/domain";
 
 type Props = { tableId: string; onJoined: () => void };
 
 type TableStatus = { table: Table | null; open: boolean };
 
-const fetchTable = (tableId: string) => apiRequest<TableStatus>(`/api/tables/${encodeURIComponent(tableId)}`);
+const fetchTable = (apiRequest: Api, tableId: string) => apiRequest<TableStatus>(`/api/tables/${encodeURIComponent(tableId)}`);
 
 /** Primeira tela do QR code: confere se a mesa está aberta e pede o código do garçom. */
 export const JoinTable = ({ tableId, onJoined }: Props) => {
+  const apiRequest = useApi();
   const [status, setStatus] = useState<TableStatus | "missing" | null>(null);
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
@@ -23,11 +25,11 @@ export const JoinTable = ({ tableId, onJoined }: Props) => {
     else setMessage(response.message);
   };
 
-  const load = async () => apply(await fetchTable(tableId));
+  const load = async () => apply(await fetchTable(apiRequest, tableId));
 
   useEffect(() => {
     let active = true;
-    void fetchTable(tableId).then((response) => {
+    void fetchTable(apiRequest, tableId).then((response) => {
       if (!active) return;
       if (response.ok) setStatus(response.data.table ? response.data : "missing");
       else setMessage(response.message);
@@ -35,7 +37,7 @@ export const JoinTable = ({ tableId, onJoined }: Props) => {
     return () => {
       active = false;
     };
-  }, [tableId]);
+  }, [apiRequest, tableId]);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();

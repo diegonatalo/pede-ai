@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest } from "@/lib/api-client";
+import { apiRequest, withRestaurant } from "@/lib/api-client";
 
 const mockFetch = (implementation: () => Promise<Response>) =>
   vi.spyOn(globalThis, "fetch").mockImplementation(implementation);
@@ -45,5 +45,18 @@ describe("apiRequest", () => {
       throw new TypeError("Failed to fetch");
     });
     expect(await apiRequest("/api/customer")).toMatchObject({ ok: false, status: 0, error: "network" });
+  });
+});
+
+describe("withRestaurant", () => {
+  it("deixa a demonstração sem parâmetro", () => {
+    expect(withRestaurant("/api/menu", "demo")).toBe("/api/menu");
+  });
+
+  it("leva o restaurante em ?r=, junto dos outros parâmetros", () => {
+    expect(withRestaurant("/api/menu", "cantina")).toBe("/api/menu?r=cantina");
+    expect(withRestaurant("/api/staff/feed?role=waiter", "bar do zé")).toBe(
+      "/api/staff/feed?role=waiter&r=bar%20do%20z%C3%A9",
+    );
   });
 });

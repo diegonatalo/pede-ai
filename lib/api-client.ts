@@ -7,11 +7,27 @@ export type ApiResponse<T> =
   | { ok: true; data: T }
   | { ok: false; status: number; error: string; message: string };
 
+/** Opções de uma chamada. */
+export type RequestOptions = { method?: "GET" | "POST" | "PATCH"; body?: unknown };
+
+/** Chamada à API já presa a um restaurante (ver `useApi`). */
+export type Api = <T>(path: string, options?: RequestOptions) => Promise<ApiResponse<T>>;
+
+/**
+ * Leva o restaurante para a API em `?r=<slug>`. A demonstração é o padrão da API e fica sem o
+ * parâmetro, então os endereços antigos continuam iguais.
+ */
+export const withRestaurant = (path: string, slug: string, demoSlug = "demo") => {
+  if (slug === demoSlug) return path;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}r=${encodeURIComponent(slug)}`;
+};
+
 const NETWORK_MESSAGE = "Sem conexão. Confira a internet e tente de novo.";
 
 export const apiRequest = async <T>(
   path: string,
-  { method = "GET", body }: { method?: "GET" | "POST" | "PATCH"; body?: unknown } = {},
+  { method = "GET", body }: RequestOptions = {},
 ): Promise<ApiResponse<T>> => {
   let response: Response;
   try {
