@@ -3,7 +3,8 @@ import { collectErrors, title } from "./fixtures";
 
 // A mesa 1 nunca é aberta pelos outros testes: aparece fechada.
 const PAGES = [
-  { path: "/", heading: "Pede Aí" },
+  { path: "/", heading: "O pedido sai da mesa e chega na cozinha. A conta sai certa para cada um." },
+  { path: "/demo", heading: "Demonstração" },
   { path: "/mesa/mesa-1", heading: "A mesa ainda não foi aberta" },
   { path: "/mesa/nao-existe", heading: "Mesa não encontrada" },
   { path: "/garcom", heading: "Garçom" },
@@ -31,5 +32,5 @@ test("endereço desconhecido mostra a 404 e volta ao início", async ({ page }) 
   await expect(title(page, "Página não encontrada")).toBeVisible();
   await page.getByRole("link", { name: "Voltar ao início" }).click();
   await expect(page).toHaveURL("/");
-  await expect(title(page, "Pede Aí")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Criar conta grátis" }).first()).toBeVisible();
 });
