@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { formatCents, parseCents } from "@/lib/money";
 import { LIMITS } from "@/lib/store/input";
 import type { Restaurant } from "@/types/domain";
@@ -11,6 +11,7 @@ type Props = { restaurant: Restaurant; onSaved: () => Promise<void> };
 
 /** Taxa de serviço, couvert e a confirmação do primeiro pedido. */
 export const SettingsForm = ({ restaurant, onSaved }: Props) => {
+  const apiRequest = useApi();
   const [fee, setFee] = useState(String(restaurant.serviceFeePercent));
   const [couvert, setCouvert] = useState(formatCents(restaurant.couvertCents).replace(/R\$\s?/, ""));
   const [approval, setApproval] = useState(restaurant.requireFirstOrderApproval);

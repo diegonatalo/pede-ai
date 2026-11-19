@@ -35,43 +35,54 @@ const errorOf = (result: ApiResult) => (result.body as { error?: string }).error
 describe("login da equipe", () => {
   const seatsOf = (result: ApiResult) => (result.staff as StaffIdentity).seats;
 
-  it("entra com o PIN pessoal e guarda quem entrou em cada tela", async () => {
+  it("entra com o PIN pessoal e guarda quem entrou em cada tela do restaurante", async () => {
     const store = createMemoryStore();
-    const waiter = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.waiter }, NOW);
+    const waiter = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.waiter }, NOW, "demo");
     expect(waiter.body).toEqual({ roles: ["waiter"], name: "Garçom da demo" });
-    expect(seatsOf(waiter)).toEqual({ waiter: { id: "staff-demo-waiter", name: "Garçom da demo" } });
-    const both = await staffLogin(store, waiter.staff as StaffIdentity, { role: "kitchen", pin: DEMO_PINS.kitchen }, NOW);
-    expect(Object.keys(seatsOf(both)).sort()).toEqual(["kitchen", "waiter"]);
+    expect(seatsOf(waiter)).toEqual({ "demo:waiter": { id: "staff-demo-waiter", name: "Garçom da demo" } });
+    const both = await staffLogin(store, waiter.staff as StaffIdentity, { role: "kitchen", pin: DEMO_PINS.kitchen }, NOW, "demo");
+    expect(Object.keys(seatsOf(both)).sort()).toEqual(["demo:kitchen", "demo:waiter"]);
   });
 
   it("deixa o gerente usar a tela do garçom, mas não o garçom usar a do gerente", async () => {
     const store = createMemoryStore();
-    const manager = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.manager }, NOW);
-    expect(seatsOf(manager).waiter).toEqual({ id: "staff-demo-manager", name: "Gerente da demo" });
-    expect(errorOf(await staffLogin(store, null, { role: "manager", pin: DEMO_PINS.waiter }, NOW))).toBe("wrong_screen");
+    const manager = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.manager }, NOW, "demo");
+    expect(seatsOf(manager)["demo:waiter"]).toEqual({ id: "staff-demo-manager", name: "Gerente da demo" });
+    expect(errorOf(await staffLogin(store, null, { role: "manager", pin: DEMO_PINS.waiter }, NOW, "demo"))).toBe(
+      "wrong_screen",
+    );
   });
 
   it("recusa PIN errado e papel de cliente", async () => {
     const store = createMemoryStore();
-    expect(errorOf(await staffLogin(store, null, { role: "waiter", pin: "9999" }, NOW))).toBe("wrong_pin");
-    expect(errorOf(await staffLogin(store, null, { role: "customer", pin: "2222" }, NOW))).toBe("invalid_input");
+    expect(errorOf(await staffLogin(store, null, { role: "waiter", pin: "9999" }, NOW, "demo"))).toBe("wrong_pin");
+    expect(errorOf(await staffLogin(store, null, { role: "customer", pin: "2222" }, NOW, "demo"))).toBe("invalid_input");
   });
 
-  it("sai de uma tela ou de todas", () => {
+  it("sai de uma tela ou de todas as do restaurante, sem mexer nas de outro", () => {
     const identity: StaffIdentity = {
-      seats: { waiter: { id: "a", name: "Ana" }, kitchen: { id: "b", name: "Bia" } },
+      seats: {
+        "demo:waiter": { id: "a", name: "Ana" },
+        "demo:kitchen": { id: "b", name: "Bia" },
+        "outro:manager": { id: "c", name: "Caio" },
+      },
       exp: NOW + 1000,
     };
-    expect(staffLogout(identity, { role: "kitchen" }).staff).toEqual({ seats: { waiter: { id: "a", name: "Ana" } }, exp: NOW + 1000 });
-    expect(staffLogout(identity, {}).staff).toBeNull();
+    expect(staffLogout(identity, { role: "kitchen" }, "demo").staff).toEqual({
+      seats: { "demo:waiter": { id: "a", name: "Ana" }, "outro:manager": { id: "c", name: "Caio" } },
+      exp: NOW + 1000,
+    });
+    expect(staffLogout(identity, {}, "demo").staff).toEqual({ seats: { "outro:manager": { id: "c", name: "Caio" } }, exp: NOW + 1000 });
+    expect(staffLogout({ seats: { "demo:waiter": { id: "a", name: "Ana" } }, exp: NOW + 1000 }, {}, "demo").staff).toBeNull();
   });
 
-  it("confere a tela pedida contra o cookie e devolve quem está nela", () => {
-    const identity: StaffIdentity = { seats: { kitchen: { id: "c1", name: "Caio" } }, exp: NOW + 1000 };
-    expect(resolveStaffActor(identity, "kitchen")).toEqual({ role: "kitchen", staffId: "c1", name: "Caio" });
-    expect(errorOf(resolveStaffActor(identity, "manager") as ApiResult)).toBe("not_logged_in");
-    expect(errorOf(resolveStaffActor(null, "kitchen") as ApiResult)).toBe("not_logged_in");
-    expect(errorOf(resolveStaffActor(identity, "customer") as ApiResult)).toBe("invalid_input");
+  it("confere a tela pedida contra o cookie, só no restaurante dela", () => {
+    const identity: StaffIdentity = { seats: { "demo:kitchen": { id: "c1", name: "Caio" } }, exp: NOW + 1000 };
+    expect(resolveStaffActor(identity, "kitchen", "demo")).toEqual({ role: "kitchen", staffId: "c1", name: "Caio" });
+    expect(errorOf(resolveStaffActor(identity, "kitchen", "outro") as ApiResult)).toBe("not_logged_in");
+    expect(errorOf(resolveStaffActor(identity, "manager", "demo") as ApiResult)).toBe("not_logged_in");
+    expect(errorOf(resolveStaffActor(null, "kitchen", "demo") as ApiResult)).toBe("not_logged_in");
+    expect(errorOf(resolveStaffActor(identity, "customer", "demo") as ApiResult)).toBe("invalid_input");
   });
 });
 
@@ -86,7 +97,7 @@ describe("equipe", () => {
     expect(pin).toMatch(/^\d{6}$/);
     expect(errorOf(await createTeamMember(store, manager, { name: "Bruno" }))).toBe("invalid_input");
 
-    const login = await staffLogin(store, null, { role: "waiter", pin }, NOW);
+    const login = await staffLogin(store, null, { role: "waiter", pin }, NOW, "demo");
     expect((login.body as { name: string }).name).toBe("Bruno");
 
     const reset = await resetTeamPin(store, manager, member.id);

@@ -48,13 +48,13 @@ export const HomePage = () => (
         Os dados ficam só na memória do servidor da demonstração e somem quando ele reinicia.
       </p>
       <div className="flex flex-wrap gap-3">
-        <Link href="/garcom" className={BUTTON.primary}>
+        <Link href="/r/demo/garcom" className={BUTTON.primary}>
           Tela do garçom
         </Link>
-        <Link href="/cozinha" className={BUTTON.secondary}>
+        <Link href="/r/demo/cozinha" className={BUTTON.secondary}>
           Cozinha e bar
         </Link>
-        <Link href="/mesa/mesa-1" className={BUTTON.secondary}>
+        <Link href="/r/demo/mesa/mesa-1" className={BUTTON.secondary}>
           Mesa 1 (cliente)
         </Link>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { BUTTON } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { allocateCents, itemTotal } from "@/lib/billing";
 import { formatCents } from "@/lib/money";
 import { MAX_PARTS, draftFromItem, draftToShares, setParts, splittableTabs } from "@/lib/split";
@@ -20,6 +20,7 @@ type Props = {
  * mais partes servem para quem comeu mais (ex.: o casal fica com 2 de 3).
  */
 export const SplitItemForm = ({ item, tabs, onDone }: Props) => {
+  const apiRequest = useApi();
   const options = splittableTabs(tabs);
   const [draft, setDraft] = useState(() => draftFromItem(item, options));
   const [message, setMessage] = useState("");

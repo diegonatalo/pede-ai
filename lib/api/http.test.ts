@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { CUSTOMER_COOKIE, STAFF_COOKIE, handleCustomer, handleStaff, respond } from "@/lib/api/http";
 import type { StaffIdentity } from "@/lib/api/identity";
 import { error, success } from "@/lib/api/result";
-import { getStore } from "@/lib/store";
+import { newRestaurantData } from "@/lib/restaurant-template";
+import { getRegistry, getStore } from "@/lib/store";
 
 const URL_BASE = "http://localhost/api/teste";
 
@@ -78,7 +79,7 @@ describe("handleStaff", () => {
 
   it("exige alguém da equipe na tela pedida e passa quem é", async () => {
     // Equipe da demonstração, que já existe no store em memória.
-    const cookie = await cookieWith({ kitchen: { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
+    const cookie = await cookieWith({ "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
     expect(await (await call("kitchen", cookie)).json()).toEqual({
       resolved: { role: "kitchen", staffId: "staff-demo-kitchen", name: "Cozinha da demo" },
     });
@@ -92,8 +93,8 @@ describe("handleStaff", () => {
     const created = await store.createStaff({ name: "Bruno", role: "waiter" }, manager);
     if (!created.ok) throw new Error(created.error);
     const cookie = await cookieWith({
-      waiter: { id: created.value.member.id, name: "Bruno" },
-      kitchen: { id: "staff-demo-kitchen", name: "Cozinha da demo" },
+      "demo:waiter": { id: created.value.member.id, name: "Bruno" },
+      "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" },
     });
     expect((await call("waiter", cookie)).status).toBe(200);
 
@@ -105,7 +106,37 @@ describe("handleStaff", () => {
     expect((await call("waiter", next)).status).toBe(401);
     expect((await call("kitchen", next)).status).toBe(200);
 
-    const ghost = await cookieWith({ waiter: { id: "ninguem", name: "Ninguém" } });
+    const ghost = await cookieWith({ "demo:waiter": { id: "ninguem", name: "Ninguém" } });
     expect((await call("waiter", ghost)).status).toBe(401);
+  });
+
+  it("responde 404 para restaurante que não existe", async () => {
+    const cookie = await cookieWith({ "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
+    const response = await handleStaff(
+      new NextRequest(`${URL_BASE}?role=kitchen&r=nao-existe`, { headers: { cookie } }),
+      () => success({}),
+    );
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: "restaurant_not_found" });
+  });
+
+  it("a tela da demo não abre a mesma tela de outro restaurante", async () => {
+    let counter = 0;
+    const data = newRestaurantData({
+      id: "rest-http",
+      slug: "cantina-teste-http",
+      name: "Cantina Teste",
+      ownerUserId: "user-http",
+      owner: { staffId: "dono-http", name: "Dono", pin: "717171" },
+      createdAt: "2026-11-19T00:00:00.000Z",
+      newId: () => `http-${++counter}`,
+    });
+    expect(await getRegistry().create(data)).toBe(true);
+    const cookie = await cookieWith({ "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
+    const response = await handleStaff(
+      new NextRequest(`${URL_BASE}?role=kitchen&r=cantina-teste-http`, { headers: { cookie } }),
+      () => success({}),
+    );
+    expect(response.status).toBe(401);
   });
 });

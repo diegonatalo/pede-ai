@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 import { handleStaff } from "@/lib/api/http";
 import { openTable } from "@/lib/api/staff";
-import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
-  return handleStaff(request, (actor, body) => openTable(getStore(), actor, body));
+  return handleStaff(request, (actor, body, store) => openTable(store, actor, body));
 }

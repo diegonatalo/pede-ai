@@ -4,6 +4,7 @@ import {
   IDENTITY_TTL_MS,
   isStaffRole,
   rolesOf,
+  seatKey,
   type StaffActor,
   type StaffIdentity,
   type StaffRole,
@@ -25,32 +26,39 @@ export const staffLogin = async (
   identity: StaffIdentity | null,
   body: unknown,
   now: number,
+  restaurantId: string,
 ): Promise<ApiResult> => {
   if (!isRecord(body) || !isStaffRole(body.role) || typeof body.pin !== "string") return error("invalid_input");
   const result = await store.verifyStaffPin(body.pin.trim());
   if (!result.ok) return error(result.error);
   const member = result.value;
   if (!canUseScreen(member, body.role)) return error("wrong_screen");
-  const seats = { ...(identity?.seats ?? {}), [body.role]: { id: member.id, name: member.name } };
+  const seats = { ...(identity?.seats ?? {}), [seatKey(restaurantId, body.role)]: { id: member.id, name: member.name } };
   const staff = { seats, exp: now + IDENTITY_TTL_MS };
-  return success({ roles: rolesOf(staff), name: member.name }, { staff });
+  return success({ roles: rolesOf(staff, restaurantId), name: member.name }, { staff });
 };
 
-/** Sai de uma tela (ou de todas, sem `role`). */
-export const staffLogout = (identity: StaffIdentity | null, body: unknown): ApiResult => {
+/** Sai de uma tela do restaurante (ou de todas as telas dele, sem `role`). Outros restaurantes ficam. */
+export const staffLogout = (identity: StaffIdentity | null, body: unknown, restaurantId: string): ApiResult => {
+  if (!identity) return success({ roles: [] }, { staff: null });
   const role = isRecord(body) && isStaffRole(body.role) ? body.role : null;
-  if (!identity || !role) return success({ roles: [] }, { staff: null });
   const seats = { ...identity.seats };
-  delete seats[role];
+  for (const key of Object.keys(seats)) {
+    if (role ? key === seatKey(restaurantId, role) : key.startsWith(`${restaurantId}:`)) delete seats[key];
+  }
   const next = { seats, exp: identity.exp };
-  const roles = rolesOf(next);
-  return roles.length === 0 ? success({ roles }, { staff: null }) : success({ roles }, { staff: next });
+  const roles = rolesOf(next, restaurantId);
+  return Object.keys(seats).length === 0 ? success({ roles }, { staff: null }) : success({ roles }, { staff: next });
 };
 
 /** A tela pedida na URL (`?role=`) precisa ter alguém da equipe que entrou com PIN. */
-export const resolveStaffActor = (identity: StaffIdentity | null, role: string | null): StaffActor | ApiResult => {
+export const resolveStaffActor = (
+  identity: StaffIdentity | null,
+  role: string | null,
+  restaurantId: string,
+): StaffActor | ApiResult => {
   if (!isStaffRole(role)) return error("invalid_input");
-  const seat = identity?.seats[role];
+  const seat = identity?.seats[seatKey(restaurantId, role)];
   if (!seat) return error("not_logged_in");
   return { role, staffId: seat.id, name: seat.name };
 };

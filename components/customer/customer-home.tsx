@@ -10,7 +10,7 @@ import { OrdersList } from "@/components/customer/orders-list";
 import { BUTTON } from "@/components/ui/styles";
 import { VenueMap } from "@/components/venue-map";
 import type { CustomerData } from "@/hooks/use-customer-view";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { cartCount, cartReducer, cartToLines, cartTotal } from "@/lib/cart";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/money";
@@ -21,6 +21,7 @@ type Section = "menu" | "cart" | "orders" | "bill" | "call" | "map" | "new-tab";
 type Props = { data: CustomerData; refresh: () => Promise<void> };
 
 export const CustomerHome = ({ data, refresh }: Props) => {
+  const apiRequest = useApi();
   const { view, menu } = data;
   const myTabs = view.tabs.filter((tab) => tab.mine);
   const [section, setSection] = useState<Section>("menu");

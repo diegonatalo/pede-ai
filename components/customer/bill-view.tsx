@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { SplitItemForm } from "@/components/customer/split-item-form";
 import { BUTTON, CARD } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { computeTabBill } from "@/lib/billing";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/money";
@@ -14,6 +14,7 @@ type Props = { view: CustomerView; refresh: () => Promise<void> };
 
 /** Conta de cada comanda do aparelho, com divisão de itens e o pedido da conta ao garçom. */
 export const BillView = ({ view, refresh }: Props) => {
+  const apiRequest = useApi();
   const [splitting, setSplitting] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState("");

@@ -5,13 +5,15 @@ import {
   parseStaffIdentity,
   type CustomerIdentity,
   type StaffIdentity,
+  seatKey,
   type StaffActor,
-  type StaffRole,
 } from "@/lib/api/identity";
 import { error, type ApiResult } from "@/lib/api/result";
 import { resolveStaffActor } from "@/lib/api/staff";
 import { signToken, verifyToken } from "@/lib/signed-token";
-import { getStore } from "@/lib/store";
+import { RESTAURANT } from "@/lib/seed-data";
+import { getRegistry, getStore } from "@/lib/store";
+import type { Store } from "@/types/store";
 
 /** Ponte entre os Route Handlers e os serviços de `lib/api`: cookies, JSON e respostas. */
 
@@ -72,62 +74,97 @@ export const respond = async (result: ApiResult) => {
 
 type Options = { json?: boolean };
 
-/** Rota do cliente: identidade pelo cookie do aparelho. */
+/** Restaurante da requisição e a camada de dados dele. */
+export type RequestRestaurant = { id: string; store: Store };
+
+// Endereço → id. O endereço de um restaurante não muda, então fica guardado no processo.
+const slugs = globalThis as typeof globalThis & { __pedeAiSlugs?: Map<string, string> };
+
+/** Restaurante pedido em `?r=<slug>`; sem o parâmetro, a demonstração. `null` se não existe. */
+export const resolveRestaurant = async (request: NextRequest): Promise<RequestRestaurant | null> => {
+  const slug = request.nextUrl.searchParams.get("r") || RESTAURANT.slug;
+  slugs.__pedeAiSlugs ??= new Map();
+  let id = slugs.__pedeAiSlugs.get(slug);
+  if (!id) {
+    const found = await getRegistry().findBySlug(slug);
+    if (!found) return null;
+    id = found.id;
+    slugs.__pedeAiSlugs.set(slug, id);
+  }
+  return { id, store: getStore(id) };
+};
+
+/** Corpo em JSON quando o método manda corpo; senão, nada. */
+const readBody = async (request: NextRequest, json: boolean) => {
+  if (!json) return { ok: true as const, body: undefined as unknown };
+  return readJson(request);
+};
+
+/** Rota pública (cardápio, mesa): só o restaurante. */
+export const handlePublic = async (
+  request: NextRequest,
+  run: (store: Store) => Promise<ApiResult> | ApiResult,
+) => {
+  const restaurant = await resolveRestaurant(request);
+  if (!restaurant) return respond(error("restaurant_not_found"));
+  return respond(await run(restaurant.store));
+};
+
+/** Rota do cliente: identidade pelo cookie do aparelho, dentro do restaurante pedido. */
 export const handleCustomer = async (
   request: NextRequest,
-  run: (identity: CustomerIdentity | null, body: unknown) => Promise<ApiResult> | ApiResult,
+  run: (identity: CustomerIdentity | null, body: unknown, store: Store) => Promise<ApiResult> | ApiResult,
   { json = request.method !== "GET" }: Options = {},
 ) => {
-  let body: unknown;
-  if (json) {
-    const parsed = await readJson(request);
-    if (!parsed.ok) return respond(parsed.result);
-    body = parsed.body;
-  }
-  return respond(await run(await readCustomer(request), body));
+  const parsed = await readBody(request, json);
+  if (!parsed.ok) return respond(parsed.result);
+  const restaurant = await resolveRestaurant(request);
+  if (!restaurant) return respond(error("restaurant_not_found"));
+  // Mesa de outro restaurante não existe no store deste: o serviço trata como "não entrou".
+  return respond(await run(await readCustomer(request), parsed.body, restaurant.store));
 };
 
 /** Rota de login da equipe: mexe no cookie da equipe sem exigir papel. */
 export const handleStaffSession = async (
   request: NextRequest,
-  run: (identity: StaffIdentity | null, body: unknown) => Promise<ApiResult> | ApiResult,
+  run: (identity: StaffIdentity | null, body: unknown, restaurant: RequestRestaurant) => Promise<ApiResult> | ApiResult,
   { json = request.method !== "GET" }: Options = {},
 ) => {
-  let body: unknown;
-  if (json) {
-    const parsed = await readJson(request);
-    if (!parsed.ok) return respond(parsed.result);
-    body = parsed.body;
-  }
-  return respond(await run(await readStaff(request), body));
+  const parsed = await readBody(request, json);
+  if (!parsed.ok) return respond(parsed.result);
+  const restaurant = await resolveRestaurant(request);
+  if (!restaurant) return respond(error("restaurant_not_found"));
+  return respond(await run(await readStaff(request), parsed.body, restaurant));
 };
 
 /**
- * Rota da equipe: a tela vem de `?role=`, e alguém da equipe precisa ter entrado nela com PIN
- * e continuar ativo (quem foi desativado perde o acesso na hora, não quando o cookie vence).
+ * Rota da equipe: a tela vem de `?role=`, e alguém da equipe precisa ter entrado nela com PIN,
+ * neste restaurante, e continuar ativo (quem foi desativado perde o acesso na hora).
  */
 export const handleStaff = async (
   request: NextRequest,
-  run: (actor: StaffActor, body: unknown) => Promise<ApiResult> | ApiResult,
+  run: (actor: StaffActor, body: unknown, store: Store) => Promise<ApiResult> | ApiResult,
   options: Options = {},
 ) =>
   handleStaffSession(
     request,
-    async (identity, body) => {
-      const actor = resolveStaffActor(identity, request.nextUrl.searchParams.get("role"));
+    async (identity, body, restaurant) => {
+      const actor = resolveStaffActor(identity, request.nextUrl.searchParams.get("role"), restaurant.id);
       if ("status" in (actor as object)) return actor as ApiResult;
       const resolved = actor as Exclude<StaffActor, string>;
-      const member = await getStore().getStaffMember(resolved.staffId);
-      if (!member?.active) return error("not_logged_in", { staff: withoutSeat(identity, resolved.role) });
-      return run(resolved, body);
+      const member = await restaurant.store.getStaffMember(resolved.staffId);
+      if (!member?.active) {
+        return error("not_logged_in", { staff: withoutSeat(identity, seatKey(restaurant.id, resolved.role)) });
+      }
+      return run(resolved, body, restaurant.store);
     },
     options,
   );
 
 /** Tira uma tela do cookie da equipe (`null` apaga o cookie se não sobrar nenhuma). */
-const withoutSeat = (identity: StaffIdentity | null, role: StaffRole): StaffIdentity | null => {
+const withoutSeat = (identity: StaffIdentity | null, key: string): StaffIdentity | null => {
   if (!identity) return null;
   const seats = { ...identity.seats };
-  delete seats[role];
+  delete seats[key];
   return Object.keys(seats).length > 0 ? { seats, exp: identity.exp } : null;
 };

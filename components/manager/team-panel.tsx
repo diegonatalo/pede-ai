@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ROLE_LABEL } from "@/components/staff/staff-login";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
-import { apiRequest } from "@/lib/api-client";
+import { useApi } from "@/hooks/use-restaurant";
 import { cn } from "@/lib/cn";
 import type { StaffMember, StaffRole } from "@/types/domain";
 
@@ -21,6 +21,7 @@ const ROLES: StaffRole[] = ["waiter", "kitchen", "manager"];
  * e desativar quem saiu. A equipe da demonstração aparece, mas não pode ser alterada.
  */
 export const TeamPanel = ({ meId }: Props) => {
+  const apiRequest = useApi();
   const [team, setTeam] = useState<StaffMember[] | null>(null);
   const [name, setName] = useState("");
   const [role, setRole] = useState<StaffRole>("waiter");
@@ -32,7 +33,7 @@ export const TeamPanel = ({ meId }: Props) => {
     const response = await apiRequest<StaffMember[]>("/api/staff/team?role=manager");
     if (response.ok) setTeam(response.data);
     else setMessage(response.message);
-  }, []);
+  }, [apiRequest]);
 
   useEffect(() => {
     let active = true;
@@ -44,7 +45,7 @@ export const TeamPanel = ({ meId }: Props) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [apiRequest]);
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
