@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { DEMO_PINS } from "@/lib/seed-data";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 const STEPS = [
   { title: "Escaneie o QR da mesa", desc: "Cada pessoa abre a própria comanda no celular." },
@@ -10,12 +9,18 @@ const STEPS = [
   { title: "Conta separada", desc: "Cada comanda paga o que pediu, com itens divididos." },
 ];
 
-export const HomePage = () => (
+/** Guia da demonstração: o que fazer em cada tela, com os PINs públicos. */
+export const DemoGuide = () => (
   <main id="conteudo" className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-6 py-20">
     <header className="flex flex-col gap-4">
-      <p className="text-sm font-semibold tracking-wide text-accent uppercase">Em construção</p>
-      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{SITE_NAME}</h1>
-      <p className="max-w-xl text-lg text-muted">{SITE_DESCRIPTION}</p>
+      <Link href="/" className="self-start text-sm font-semibold text-accent hover:underline">
+        ← Pede Aí
+      </Link>
+      <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Demonstração</h1>
+      <p className="max-w-xl text-lg text-muted">
+        Um restaurante de exemplo, aberto para todo mundo. Faça o papel do garçom, da cozinha e do cliente, cada um
+        numa aba ou num celular.
+      </p>
     </header>
     <ol className="grid gap-4 sm:grid-cols-2">
       {STEPS.map((step, index) => (
@@ -28,7 +33,7 @@ export const HomePage = () => (
     </ol>
     <section aria-labelledby="titulo-demo" className={`${CARD} flex flex-col gap-4 p-6`}>
       <h2 id="titulo-demo" className="text-xl font-bold">
-        Experimente a demonstração
+        Passo a passo
       </h2>
       <ol className="flex list-decimal flex-col gap-2 pl-5 text-muted">
         <li>

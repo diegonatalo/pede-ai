@@ -12,4 +12,5 @@
 - [x] Fase 2, etapa 1b: equipe com PIN pessoal e registro de quem fez cada ação.
 - [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta e limpeza diária da demonstração.
 - [x] Fase 2, etapa 3: cardápio editável pelo gerente.
+- [x] Página inicial de apresentação, com a demonstração em `/demo`.
 - [ ] Fase 2: fotos e mesas editáveis, tempo real, LGPD, Pix, notificações e nota fiscal.

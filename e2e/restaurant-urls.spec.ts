@@ -15,8 +15,10 @@ test("as telas de um restaurante que não existe avisam pelo endereço", async (
   await expect(page.getByText("Restaurante não encontrado. Confira o endereço.")).toBeVisible();
 });
 
-test("o início leva às telas da demonstração pelo endereço do restaurante", async ({ page }) => {
+test("o início leva à demonstração, e dela às telas pelo endereço do restaurante", async ({ page }) => {
   await page.goto("/");
+  await page.getByRole("link", { name: "Ver a demonstração" }).first().click();
+  await expect(page).toHaveURL("/demo");
   await page.getByRole("link", { name: "Tela do garçom" }).click();
   await expect(page).toHaveURL("/r/demo/garcom");
   const errors = collectErrors(page);
