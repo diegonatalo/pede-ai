@@ -27,6 +27,8 @@ export type StaffMember = {
 
 export type Restaurant = {
   id: string;
+  /** Endereço do restaurante (`/r/<slug>`). */
+  slug: string;
   name: string;
   serviceFeePercent: number;
   couvertCents: Cents;

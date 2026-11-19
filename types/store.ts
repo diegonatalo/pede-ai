@@ -1,4 +1,5 @@
 import type { SharesError } from "@/lib/billing";
+import type { RestaurantData } from "@/lib/restaurant-template";
 import type {
   Actor,
   CallReason,
@@ -221,4 +222,18 @@ export type Repository = {
   updateStaff(member: StaffMember, pinKey: string | null, event: NewEvent): Promise<boolean>;
   getStaffGuard(): Promise<StaffGuard>;
   saveStaffGuard(guard: StaffGuard): Promise<void>;
+};
+
+/** Restaurante no cadastro geral (sem os dados de dentro dele). */
+export type RestaurantRecord = { id: string; slug: string; name: string; ownerUserId: string | null };
+
+/**
+ * Cadastro dos restaurantes, fora de qualquer restaurante: achar pelo endereço ou pelo dono
+ * e criar um novo. Os dados de dentro de cada restaurante ficam no `Repository` dele.
+ */
+export type RestaurantRegistry = {
+  findBySlug(slug: string): Promise<RestaurantRecord | null>;
+  listByOwner(ownerUserId: string): Promise<RestaurantRecord[]>;
+  /** Grava o restaurante com salão, cardápio e equipe. `false` se o endereço já é de outro. */
+  create(data: RestaurantData): Promise<boolean>;
 };
