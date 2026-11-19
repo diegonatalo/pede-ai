@@ -7,7 +7,7 @@ import { CartView } from "@/components/customer/cart-view";
 import { CreateTabForm } from "@/components/customer/create-tab-form";
 import { MenuList } from "@/components/customer/menu-list";
 import { OrdersList } from "@/components/customer/orders-list";
-import { BUTTON } from "@/components/ui/styles";
+import { BUTTON, EYEBROW, SELECT } from "@/components/ui/styles";
 import { VenueMap } from "@/components/venue-map";
 import type { CustomerData } from "@/hooks/use-customer-view";
 import { useApi } from "@/hooks/use-restaurant";
@@ -15,6 +15,8 @@ import { cartCount, cartReducer, cartToLines, cartTotal } from "@/lib/cart";
 import { cn } from "@/lib/cn";
 import { formatCents } from "@/lib/money";
 import { canOrder } from "@/lib/transitions";
+import { TabBar } from "@/components/ui/tab-bar";
+import { BellIcon, ReceiptIcon, UtensilsIcon, WalletIcon } from "@/components/ui/icons";
 
 type Section = "menu" | "cart" | "orders" | "bill" | "call" | "map" | "new-tab";
 
@@ -79,12 +81,12 @@ export const CustomerHome = ({ data, refresh }: Props) => {
 
   return (
     <div className="flex flex-1 flex-col pb-40 md:pb-24">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur-lg">
         <div className="mx-auto flex w-full max-w-xl flex-wrap items-center justify-between gap-2 px-4 py-3">
           <div>
-            <p className="text-xs font-semibold tracking-wide text-accent uppercase">{view.restaurant.name}</p>
+            <p className={EYEBROW}>{view.restaurant.name}</p>
             <div className="flex items-baseline gap-3">
-              <h1 className="text-lg font-bold">{view.table.label}</h1>
+              <h1 className="text-2xl leading-tight font-bold">{view.table.label}</h1>
               {view.mapSpots.length > 0 && (
                 <button
                   type="button"
@@ -101,7 +103,7 @@ export const CustomerHome = ({ data, refresh }: Props) => {
             <label className="flex items-center gap-2 text-sm">
               <span className="text-muted">Comanda</span>
               <select
-                className="min-h-11 rounded-xl border border-border bg-card px-3 font-semibold"
+                className={SELECT}
                 value={activeTab?.id}
                 onChange={(event) => {
                   if (event.target.value === "__new") go("new-tab");
@@ -123,7 +125,7 @@ export const CustomerHome = ({ data, refresh }: Props) => {
 
       <main id="conteudo" className="mx-auto w-full max-w-xl flex-1 px-4 py-5">
         {notice && (
-          <p className="mb-4 rounded-xl bg-emerald-100 p-3 text-sm font-medium text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100" role="status">
+          <p className="mb-4 rounded-2xl bg-success-soft p-3 text-sm font-medium text-success" role="status">
             {notice}
           </p>
         )}
@@ -172,7 +174,7 @@ export const CustomerHome = ({ data, refresh }: Props) => {
         <div className="fixed inset-x-0 bottom-16 z-20 px-4 md:bottom-20">
           <button
             type="button"
-            className={cn(BUTTON.primary, "mx-auto flex w-full max-w-xl shadow-lg")}
+            className={cn(BUTTON.primary, "mx-auto flex w-full max-w-xl justify-between")}
             onClick={() => go("cart")}
           >
             <span>Ver pedido ({count})</span>
@@ -181,41 +183,26 @@ export const CustomerHome = ({ data, refresh }: Props) => {
         </div>
       )}
 
-      <nav aria-label="Seções" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
-        <ul className="mx-auto grid max-w-xl grid-cols-4">
-          {(
-            [
-              ["menu", "Cardápio"],
-              ["orders", "Pedidos"],
-              ["bill", "Conta"],
-              ["call", "Chamar"],
-            ] as const
-          ).map(([id, label]) => {
-            const current = section === id || (id === "menu" && (section === "cart" || section === "new-tab"));
-            return (
-              <li key={id}>
-                <button
-                  type="button"
-                  aria-current={current ? "page" : undefined}
-                  onClick={() => go(id)}
-                  className={cn(
-                    "flex min-h-16 w-full flex-col items-center justify-center text-sm font-semibold",
-                    current ? "text-accent" : "text-muted",
-                  )}
-                >
-                  {label}
-                  {id === "orders" && view.items.some((item) => item.status === "ready" || item.status === "picked_up") && (
-                    <span className="text-xs font-medium">a caminho!</span>
-                  )}
-                  {id === "call" && view.calls.some((call) => call.status === "acknowledged") && (
-                    <span className="text-xs font-medium">vindo!</span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <TabBar
+        current={section === "cart" || section === "new-tab" || section === "map" ? "menu" : section}
+        onSelect={go}
+        items={[
+          { id: "menu", label: "Cardápio", icon: UtensilsIcon },
+          {
+            id: "orders",
+            label: "Pedidos",
+            icon: ReceiptIcon,
+            hint: view.items.some((item) => item.status === "ready" || item.status === "picked_up") ? "a caminho!" : undefined,
+          },
+          { id: "bill", label: "Conta", icon: WalletIcon },
+          {
+            id: "call",
+            label: "Chamar",
+            icon: BellIcon,
+            hint: view.calls.some((call) => call.status === "acknowledged") ? "vindo!" : undefined,
+          },
+        ]}
+      />
     </div>
   );
 };

@@ -8,23 +8,25 @@ import { SettingsForm } from "@/components/manager/settings-form";
 import { TeamPanel } from "@/components/manager/team-panel";
 import { StaffHeader } from "@/components/staff/staff-header";
 import { StaffLogin } from "@/components/staff/staff-login";
+import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { TablesPanel } from "@/components/waiter/tables-panel";
 import { useManagerReport } from "@/hooks/use-manager-report";
 import { useStaffCommand } from "@/hooks/use-staff-command";
 import { useStaffOverview } from "@/hooks/use-staff-overview";
-import { cn } from "@/lib/cn";
 import { tableBoard } from "@/lib/selectors";
+import { TabBar, type TabItem } from "@/components/ui/tab-bar";
+import { ChartIcon, SlidersIcon, TablesIcon, UsersIcon, UtensilsIcon } from "@/components/ui/icons";
 
 type Section = "floor" | "report" | "menu" | "team" | "settings";
 
 // Até 5 seções (barra de abas no celular): os QR codes ficam nos ajustes, com a configuração do salão.
-const SECTIONS: [Section, string][] = [
-  ["floor", "Salão"],
-  ["report", "Números"],
-  ["menu", "Cardápio"],
-  ["team", "Equipe"],
-  ["settings", "Ajustes"],
+const SECTIONS: [Section, string, TabItem<Section>["icon"]][] = [
+  ["floor", "Salão", TablesIcon],
+  ["report", "Números", ChartIcon],
+  ["menu", "Cardápio", UtensilsIcon],
+  ["team", "Equipe", UsersIcon],
+  ["settings", "Ajustes", SlidersIcon],
 ];
 
 export const ManagerApp = () => {
@@ -46,7 +48,7 @@ export const ManagerApp = () => {
 
   if (state.status === "error") {
     return (
-      <main id="conteudo" className="mx-auto w-full max-w-md px-4 py-20">
+      <CenteredScreen wide>
         <section className={`${CARD} p-6 text-center`}>
           <h1 className="text-2xl font-bold">Não deu para carregar</h1>
           <p className="mt-2 text-muted">{state.message}</p>
@@ -54,7 +56,7 @@ export const ManagerApp = () => {
             Tentar de novo
           </button>
         </section>
-      </main>
+      </CenteredScreen>
     );
   }
 
@@ -71,35 +73,21 @@ export const ManagerApp = () => {
         personName={data.me?.name}
         onLoggedOut={() => void refresh()}
       />
-      <nav
-        aria-label="Seções"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:static md:border-t-0 md:border-b print:hidden"
-      >
-        <ul className="mx-auto grid max-w-6xl grid-cols-5 md:flex md:gap-2 md:px-4">
-          {SECTIONS.map(([id, label]) => (
-            <li key={id}>
-              <button
-                type="button"
-                aria-current={section === id ? "page" : undefined}
-                onClick={() => {
-                  setSection(id);
-                  window.scrollTo({ top: 0 });
-                }}
-                className={cn(
-                  "flex min-h-16 w-full items-center justify-center font-semibold md:min-h-12 md:px-4",
-                  section === id ? "text-accent" : "text-muted",
-                )}
-              >
-                {label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <div className="mx-auto w-full max-w-6xl md:px-4 md:pt-3">
+        <TabBar
+          layout="responsive"
+          current={section}
+          onSelect={(id) => {
+            setSection(id);
+            window.scrollTo({ top: 0 });
+          }}
+          items={SECTIONS.map(([id, label, icon]) => ({ id, label, icon }))}
+        />
+      </div>
 
       <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">
         {message && (
-          <p className="mb-4 rounded-xl bg-red-100 p-3 text-sm font-medium text-red-900 dark:bg-red-900/40 dark:text-red-100" role="alert">
+          <p className="mb-4 rounded-2xl bg-danger-soft p-3 text-sm font-medium text-danger" role="alert">
             {message}
           </p>
         )}

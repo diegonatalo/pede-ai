@@ -60,7 +60,7 @@ export const QrSheet = ({ tables }: Props) => {
         </button>
       </div>
       {isLocal(origin) && (
-        <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-950 dark:bg-amber-900/40 dark:text-amber-50 print:hidden" role="alert">
+        <p className="rounded-2xl bg-warning-soft p-3 text-sm font-medium text-warning print:hidden" role="alert">
           Estes QR codes apontam para {origin}, que só funciona neste computador. Para imprimir os de verdade, abra
           esta tela pelo endereço publicado.
         </p>

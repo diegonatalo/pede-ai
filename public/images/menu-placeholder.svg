@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" role="img" aria-label="Foto do prato em breve">
+  <style>
+    .f1 { stop-color: #f9e3d6; } .f2 { stop-color: #efc4ad; }
+    .p1 { stop-color: #fffbf8; } .p2 { stop-color: #f2e2d6; }
+    .aro { stroke: #e8cdbb; } .tf { fill: #c43d16; } .ts { stroke: #c43d16; }
+    @media (prefers-color-scheme: dark) {
+      .f1 { stop-color: #3a2219; } .f2 { stop-color: #24160f; }
+      .p1 { stop-color: #4a3328; } .p2 { stop-color: #33231b; }
+      .aro { stroke: #5b4134; } .tf { fill: #ff7a4a; } .ts { stroke: #ff7a4a; }
+    }
+  </style>
+  <defs>
+    <linearGradient id="fundo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" class="f1"/>
+      <stop offset="1" class="f2"/>
+    </linearGradient>
+    <radialGradient id="prato" cx="0.42" cy="0.38" r="0.65">
+      <stop offset="0" class="p1"/>
+      <stop offset="1" class="p2"/>
+    </radialGradient>
+  </defs>
+  <rect width="300" height="300" fill="url(#fundo)"/>
+  <ellipse cx="150" cy="172" rx="78" ry="14" class="tf" opacity="0.12"/>
+  <circle cx="150" cy="150" r="70" fill="url(#prato)"/>
+  <circle cx="150" cy="150" r="48" fill="none" class="aro" stroke-width="2.5"/>
+  <g fill="none" class="ts" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <path d="M52 104v32M44 104v18a8 8 0 0 0 16 0v-18M52 136v62"/>
+    <path d="M248 198V104c-10 6-15 18-15 32v14h15"/>
+  </g>
+  <g class="tf" opacity="0.42">
+    <circle cx="139" cy="142" r="8"/>
+    <circle cx="162" cy="138" r="6"/>
+    <circle cx="154" cy="160" r="9"/>
+  </g>
+</svg>

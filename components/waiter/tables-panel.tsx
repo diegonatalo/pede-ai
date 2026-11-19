@@ -23,8 +23,8 @@ export const TablesPanel = ({ board, busy, run }: Props) => (
           className={cn(
             CARD,
             "flex flex-col gap-3 p-4",
-            summary.billRequested && "border-sky-500",
-            summary.needsApproval && "border-amber-400",
+            summary.billRequested && "border-info",
+            summary.needsApproval && "border-warning",
           )}
         >
           <div className="flex items-start justify-between gap-2">
@@ -77,7 +77,7 @@ export const TablesPanel = ({ board, busy, run }: Props) => (
                         {payable && (
                           <button
                             type="button"
-                            className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm")}
+                            className={BUTTON.small}
                             disabled={busy === tab.id}
                             onClick={() => run(tab.id, `/api/staff/tabs/${tab.id}/status`, { to: "paid" })}
                             aria-label={`Marcar a comanda de ${tab.customerName} (${table.label}) como paga`}

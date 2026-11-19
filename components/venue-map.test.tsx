@@ -17,7 +17,7 @@ describe("VenueMap", () => {
     expect([...container.querySelectorAll("text")].map((node) => node.textContent)).toContain("Você");
     // Só a mesa do cliente tem a cor de destaque, e sem a cor comum junto (uma anularia a outra).
     const highlighted = [...container.querySelectorAll("rect")].filter((rect) =>
-      rect.getAttribute("class")?.includes("fill-accent"),
+      rect.classList.contains("fill-accent"),
     );
     expect(highlighted).toHaveLength(1);
     expect(highlighted[0].getAttribute("class")).not.toContain("fill-card");

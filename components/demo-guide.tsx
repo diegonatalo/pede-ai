@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AmbientGlow, BrandMark } from "@/components/ui/brand";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { DEMO_PINS } from "@/lib/seed-data";
 
@@ -11,10 +12,11 @@ const STEPS = [
 
 /** Guia da demonstração: o que fazer em cada tela, com os PINs públicos. */
 export const DemoGuide = () => (
-  <main id="conteudo" className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-6 py-20">
+  <main id="conteudo" className="relative isolate mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-10 px-6 py-20">
+    <AmbientGlow />
     <header className="flex flex-col gap-4">
-      <Link href="/" className="self-start text-sm font-semibold text-accent hover:underline">
-        ← Pede Aí
+      <Link href="/" className="self-start rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" aria-label="Pede Aí, voltar ao início">
+        <BrandMark />
       </Link>
       <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Demonstração</h1>
       <p className="max-w-xl text-lg text-muted">

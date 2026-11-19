@@ -69,7 +69,7 @@ export const CreateRestaurantForm = ({ onCreated }: Props) => {
         As telas ficam em /r/{address || "seu-restaurante"}. Letras minúsculas, números e hífens.
       </p>
       {message && (
-        <p className="rounded-xl bg-red-100 p-3 text-sm font-medium text-red-900 dark:bg-red-900/40 dark:text-red-100" role="alert">
+        <p className="rounded-2xl bg-danger-soft p-3 text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}

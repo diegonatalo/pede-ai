@@ -74,7 +74,7 @@ export const OwnRestaurants = () => {
       )}
 
       {message && (
-        <p className="rounded-xl bg-red-100 p-3 text-sm font-medium text-red-900 dark:bg-red-900/40 dark:text-red-100" role="alert">
+        <p className="rounded-2xl bg-danger-soft p-3 text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}

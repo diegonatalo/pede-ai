@@ -1,6 +1,6 @@
 "use client";
 
-import { BUTTON, CARD } from "@/components/ui/styles";
+import { BUTTON, CARD, COUNT, EMPTY } from "@/components/ui/styles";
 import { useNow } from "@/hooks/use-now";
 import { cn } from "@/lib/cn";
 import { STATION_LABEL } from "@/lib/labels";
@@ -24,7 +24,7 @@ const Waited = ({ since, alertAfter }: { since: string; alertAfter: number }) =>
   if (!now) return null;
   const minutes = minutesSince(since, now);
   return (
-    <span className={cn("text-sm whitespace-nowrap", minutes >= alertAfter ? "font-bold text-red-700 dark:text-red-400" : "text-muted")}>
+    <span className={cn("text-sm whitespace-nowrap", minutes >= alertAfter ? "font-bold text-danger" : "text-muted")}>
       {minutes === 0 ? "agora" : `${minutes} min`}
     </span>
   );
@@ -35,7 +35,7 @@ const Ticket = ({ ticket, column, showStation, busy, run }: { ticket: KitchenTic
   const status = (to: string) => () => run(item.id, `/api/staff/items/${item.id}/status`, { to });
   const disabled = busy === item.id;
   return (
-    <li className={cn(CARD, "flex flex-col gap-3 p-4", column === "ready" && "border-emerald-500")}>
+    <li className={cn(CARD, "flex flex-col gap-3 p-4", column === "ready" && "border-success")}>
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-sm font-semibold">
           {table.label} · {tabName}
@@ -47,7 +47,7 @@ const Ticket = ({ ticket, column, showStation, busy, run }: { ticket: KitchenTic
         {item.quantity}× {item.nameSnapshot}
       </h3>
       {item.note && (
-        <p className="rounded-lg bg-amber-100 px-3 py-2 font-semibold text-amber-950 dark:bg-amber-900/50 dark:text-amber-50">
+        <p className="rounded-xl bg-warning-soft px-3 py-2 font-semibold text-warning">
           {item.note}
         </p>
       )}
@@ -85,10 +85,10 @@ export const QueueBoard = ({ queue, showStation, busy, run }: Props) => (
       <section key={column.id} aria-labelledby={`coluna-${column.id}`} className="flex flex-col gap-3">
         <h2 id={`coluna-${column.id}`} className="flex items-center gap-2 text-lg font-bold">
           {column.title}
-          <span className="rounded-full bg-border px-2 text-sm">{queue[column.id].length}</span>
+          <span className={COUNT}>{queue[column.id].length}</span>
         </h2>
         {queue[column.id].length === 0 ? (
-          <p className="text-sm text-muted">{column.empty}</p>
+          <p className={EMPTY}>{column.empty}</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {queue[column.id].map((ticket) => (

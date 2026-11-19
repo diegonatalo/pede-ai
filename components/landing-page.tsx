@@ -7,13 +7,14 @@ import cozinha from "@/public/images/landing/cozinha.webp";
 import hero from "@/public/images/landing/hero.webp";
 import mesaAmigos from "@/public/images/landing/mesa-amigos.webp";
 import salao from "@/public/images/landing/salao.webp";
+import { BrandMark } from "@/components/ui/brand";
 import { BUTTON } from "@/components/ui/styles";
 import { cn } from "@/lib/cn";
 import { SITE_NAME } from "@/lib/site";
 
 /** Botão claro sobre foto escura (o `secondary` depende do tema e some em cima da imagem). */
 const ON_PHOTO =
-  "inline-flex min-h-12 items-center justify-center rounded-full border border-white/70 px-6 font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+  "inline-flex min-h-13 items-center justify-center rounded-full border border-white/70 px-7 text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
 const HIGHLIGHTS = [
   { title: "Sem app para instalar", text: "O cliente aponta a câmera para o QR da mesa e pede no navegador." },
@@ -76,7 +77,7 @@ export const LandingPage = () => (
       {/* Escurece a foto para o texto ter contraste em qualquer tela. */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-b from-black/70 via-black/55 to-black/85" aria-hidden="true" />
       <nav aria-label="Principal" className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-        <span className="text-lg font-bold tracking-tight">{SITE_NAME}</span>
+        <BrandMark onPhoto />
         <Link href="/conta" className="rounded-full px-4 py-2 font-semibold hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-white">
           Entrar
         </Link>
@@ -93,7 +94,7 @@ export const LandingPage = () => (
           garçom é avisado quando fica pronto e, no fim, cada pessoa paga só o que pediu.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href="/conta" className={cn(BUTTON.primary, "min-h-12 px-6 text-base")}>
+          <Link href="/conta" className={BUTTON.primaryLarge}>
             Criar conta grátis
           </Link>
           <Link href="/demo" className={ON_PHOTO}>

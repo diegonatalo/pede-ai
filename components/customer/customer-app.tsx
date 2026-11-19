@@ -4,13 +4,14 @@ import { useParams } from "next/navigation";
 import { CreateTabForm } from "@/components/customer/create-tab-form";
 import { CustomerHome } from "@/components/customer/customer-home";
 import { JoinTable } from "@/components/customer/join-table";
+import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { useCustomerView } from "@/hooks/use-customer-view";
 
 const Centered = ({ children }: { children: React.ReactNode }) => (
-  <main id="conteudo" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
+  <CenteredScreen wide>
     {children}
-  </main>
+  </CenteredScreen>
 );
 
 /**

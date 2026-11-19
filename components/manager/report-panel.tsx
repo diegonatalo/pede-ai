@@ -1,4 +1,4 @@
-import { CARD } from "@/components/ui/styles";
+import { CARD, EMPTY } from "@/components/ui/styles";
 import type { DayReport } from "@/lib/metrics";
 import { formatCents } from "@/lib/money";
 
@@ -36,7 +36,7 @@ export const ReportPanel = ({ report }: { report: DayReport }) => (
         Mais pedidos
       </h2>
       {report.topItems.length === 0 ? (
-        <p className="text-sm text-muted">Nenhum item vendido hoje ainda.</p>
+        <p className={EMPTY}>Nenhum item vendido hoje ainda.</p>
       ) : (
         <ol className={`${CARD} divide-y divide-border`}>
           {report.topItems.map((item, index) => (

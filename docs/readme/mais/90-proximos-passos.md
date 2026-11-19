@@ -13,4 +13,5 @@
 - [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta e limpeza diária da demonstração.
 - [x] Fase 2, etapa 3: cardápio editável pelo gerente.
 - [x] Página inicial de apresentação, com a demonstração em `/demo`.
+- [x] Nova identidade visual, com o espaço das fotos do cardápio pronto.
 - [ ] Fase 2: fotos e mesas editáveis, tempo real, LGPD, Pix, notificações e nota fiscal.

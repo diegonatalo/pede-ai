@@ -10,10 +10,10 @@ type Props = {
 
 const FILL: Record<MapSpotKind, string> = {
   table: "fill-card stroke-border",
-  kitchen: "fill-amber-200 stroke-amber-400 dark:fill-amber-900/60 dark:stroke-amber-700",
-  bar: "fill-orange-200 stroke-orange-400 dark:fill-orange-900/60 dark:stroke-orange-700",
-  restroom: "fill-sky-200 stroke-sky-400 dark:fill-sky-900/60 dark:stroke-sky-700",
-  cashier: "fill-emerald-200 stroke-emerald-400 dark:fill-emerald-900/60 dark:stroke-emerald-700",
+  kitchen: "fill-warning-soft stroke-warning/60",
+  bar: "fill-accent-soft stroke-accent/60",
+  restroom: "fill-info-soft stroke-info/60",
+  cashier: "fill-success-soft stroke-success/60",
   entrance: "fill-transparent stroke-muted",
 };
 

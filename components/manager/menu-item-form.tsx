@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { BUTTON, INPUT, LABEL } from "@/components/ui/styles";
+import { CameraIcon } from "@/components/ui/icons";
+import { MenuPhoto } from "@/components/ui/menu-photo";
+import { BUTTON, INPUT, LABEL, SELECT } from "@/components/ui/styles";
 import { STATION_LABEL } from "@/lib/labels";
 import { MENU_LIMITS } from "@/lib/menu-editor";
 import { formatCents, parseCents } from "@/lib/money";
@@ -48,9 +50,22 @@ export const MenuItemForm = ({ categories, item, categoryId, busy, onSubmit, onC
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-background p-4"
+      className="flex flex-col gap-4 rounded-2xl border border-border bg-surface p-4"
       aria-label={item ? `Editar ${item.name}` : "Novo item"}
     >
+      <div className="flex items-center gap-4">
+        <MenuPhoto src={item?.photoUrl} alt={item?.name ?? "Novo item"} sizes="96px" className="size-24 rounded-2xl" />
+        <div className="flex flex-col gap-1">
+          <p className={LABEL}>Foto</p>
+          <p className="text-sm text-muted">
+            {item?.photoUrl ? "Foto do item no cardápio." : "Por enquanto aparece esta ilustração. O envio de fotos chega na próxima versão."}
+          </p>
+          <button type="button" className={`${BUTTON.small} mt-1 self-start`} disabled>
+            <CameraIcon className="size-4" />
+            Enviar foto (em breve)
+          </button>
+        </div>
+      </div>
       <label className="flex flex-col gap-1">
         <span className={LABEL}>Nome</span>
         <input
@@ -85,7 +100,7 @@ export const MenuItemForm = ({ categories, item, categoryId, busy, onSubmit, onC
         <label className="flex flex-col gap-1">
           <span className={LABEL}>Preparo</span>
           <select
-            className="min-h-11 rounded-xl border border-border bg-card px-3"
+            className={SELECT}
             value={station}
             onChange={(event) => setStation(event.target.value as Station)}
           >
@@ -99,7 +114,7 @@ export const MenuItemForm = ({ categories, item, categoryId, busy, onSubmit, onC
         <label className="flex flex-col gap-1">
           <span className={LABEL}>Categoria</span>
           <select
-            className="min-h-11 rounded-xl border border-border bg-card px-3"
+            className={SELECT}
             value={category}
             onChange={(event) => setCategory(event.target.value)}
           >
@@ -112,7 +127,7 @@ export const MenuItemForm = ({ categories, item, categoryId, busy, onSubmit, onC
         </label>
       </div>
       {message && (
-        <p className="text-sm font-medium text-red-700 dark:text-red-300" role="alert">
+        <p className="text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}

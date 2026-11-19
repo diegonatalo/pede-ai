@@ -50,7 +50,7 @@ export const BillView = ({ view, refresh }: Props) => {
         Conta
       </h2>
       {message && (
-        <p className="text-sm font-medium text-red-700 dark:text-red-400" role="alert">
+        <p className="text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}
@@ -143,17 +143,17 @@ export const BillView = ({ view, refresh }: Props) => {
               </button>
             )}
             {tab.status === "bill_requested" && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-sky-100 p-3 text-sky-950 dark:bg-sky-900/40 dark:text-sky-50">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-info-soft p-3 text-info">
                 <p className="font-semibold" role="status">
                   Conta pedida. O garçom já vem.
                 </p>
-                <button type="button" className={cn(BUTTON.ghost, "min-h-10 text-sm")} disabled={busy === tab.id} onClick={() => void reopen(tab.id)}>
+                <button type="button" className={BUTTON.smallGhost} disabled={busy === tab.id} onClick={() => void reopen(tab.id)}>
                   Quero pedir mais
                 </button>
               </div>
             )}
             {tab.status === "paid" && (
-              <p className="rounded-xl bg-emerald-100 p-3 font-semibold text-emerald-950 dark:bg-emerald-900/40 dark:text-emerald-50">
+              <p className="rounded-2xl bg-success-soft p-3 font-semibold text-success">
                 Conta paga. Obrigado!
               </p>
             )}

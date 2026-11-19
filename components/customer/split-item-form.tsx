@@ -94,7 +94,7 @@ export const SplitItemForm = ({ item, tabs, onDone }: Props) => {
       )}
       {shares.length === 0 && <p className="text-sm text-muted">Marque pelo menos uma comanda.</p>}
       {message && (
-        <p className="text-sm font-medium text-red-700 dark:text-red-400" role="alert">
+        <p className="text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}
