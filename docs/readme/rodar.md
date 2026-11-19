@@ -20,8 +20,10 @@ pnpm dev        # http://localhost:3000
 
 ### 🔑 Variáveis de ambiente
 
-Há uma só, e é opcional.
+Todas são opcionais na demonstração.
 
 | Variável | Descrição | Se não definir |
 |---|---|---|
+| `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe. Obrigatória com mais de um servidor. | Gera uma chave aleatória a cada início do servidor |
+| `STAFF_PIN_KITCHEN`, `STAFF_PIN_WAITER`, `STAFF_PIN_MANAGER` | PIN de cada papel da equipe. | PINs da demo: `1111`, `2222` e `3333` |
 | `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://pede-ai.vercel.app` |
