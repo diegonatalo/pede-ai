@@ -37,13 +37,13 @@ export const AvailabilityList = ({ menu, station, busy, run }: Props) => {
               <li key={item.id} className={cn(CARD, "flex items-center justify-between gap-3 p-4", !item.available && "opacity-80")}>
                 <div>
                   <p className="font-semibold">{item.name}</p>
-                  <p className={cn("text-sm", item.available ? "text-muted" : "font-semibold text-red-700 dark:text-red-400")}>
+                  <p className={cn("text-sm", item.available ? "text-muted" : "font-semibold text-danger")}>
                     {item.available ? "No cardápio" : "Esgotado"}
                   </p>
                 </div>
                 <button
                   type="button"
-                  className={cn(item.available ? BUTTON.secondary : BUTTON.primary, "min-h-10 px-4 text-sm")}
+                  className={item.available ? BUTTON.small : BUTTON.smallPrimary}
                   disabled={busy === item.id}
                   onClick={() =>
                     run(item.id, `/api/staff/menu/${item.id}/availability`, { available: !item.available })

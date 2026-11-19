@@ -54,7 +54,7 @@ export const CallWaiter = ({ view, tabId, refresh }: Props) => {
           {active.map((call) => (
             <li
               key={call.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-sky-100 p-3 text-sky-950 dark:bg-sky-900/40 dark:text-sky-50"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-info-soft p-3 text-info"
             >
               <div role="status">
                 <p className="font-semibold">{CALL_STATUS_LABEL[call.status]}</p>
@@ -100,7 +100,7 @@ export const CallWaiter = ({ view, tabId, refresh }: Props) => {
           />
         </label>
         {message && (
-          <p className="text-sm font-medium text-red-700 dark:text-red-400" role="alert">
+          <p className="text-sm font-medium text-danger" role="alert">
             {message}
           </p>
         )}

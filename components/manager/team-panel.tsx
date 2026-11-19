@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ROLE_LABEL } from "@/components/staff/staff-login";
-import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
+import { BUTTON, CARD, INPUT, LABEL, SELECT } from "@/components/ui/styles";
 import { useApi } from "@/hooks/use-restaurant";
 import { cn } from "@/lib/cn";
 import { ownerStaffIdFor } from "@/lib/restaurant-template";
@@ -116,7 +116,7 @@ export const TeamPanel = ({ meId }: Props) => {
         <label className="flex flex-col gap-2">
           <span className={LABEL}>Papel</span>
           <select
-            className="min-h-11 rounded-xl border border-border bg-card px-3"
+            className={SELECT}
             value={role}
             onChange={(event) => setRole(event.target.value as StaffRole)}
           >
@@ -133,7 +133,7 @@ export const TeamPanel = ({ meId }: Props) => {
       </form>
 
       {message && (
-        <p className="rounded-xl bg-red-100 p-3 text-sm font-medium text-red-900 dark:bg-red-900/40 dark:text-red-100" role="alert">
+        <p className="rounded-2xl bg-danger-soft p-3 text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}
@@ -162,7 +162,7 @@ export const TeamPanel = ({ meId }: Props) => {
                   {member.active && (
                     <button
                       type="button"
-                      className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm")}
+                      className={BUTTON.small}
                       disabled={busy === member.id}
                       onClick={() => void resetPin(member)}
                       aria-label={`Gerar outro PIN para ${member.name}`}
@@ -173,7 +173,7 @@ export const TeamPanel = ({ meId }: Props) => {
                   {member.id !== meId && member.id !== ownerStaffIdFor(member.restaurantId) && (
                     <button
                       type="button"
-                      className={cn(BUTTON.ghost, "min-h-10 px-4 text-sm")}
+                      className={BUTTON.smallGhost}
                       disabled={busy === member.id}
                       onClick={() => void setActive(member, !member.active)}
                       aria-label={`${member.active ? "Desativar" : "Reativar"} ${member.name}`}

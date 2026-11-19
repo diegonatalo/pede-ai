@@ -5,6 +5,7 @@ import { AvailabilityList } from "@/components/kitchen/availability-list";
 import { QueueBoard } from "@/components/kitchen/queue-board";
 import { StaffHeader } from "@/components/staff/staff-header";
 import { StaffLogin } from "@/components/staff/staff-login";
+import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { useAttentionAlert } from "@/hooks/use-attention-alert";
 import { useStaffCommand } from "@/hooks/use-staff-command";
@@ -12,6 +13,8 @@ import { useStaffOverview } from "@/hooks/use-staff-overview";
 import { useWakeLock } from "@/hooks/use-wake-lock";
 import { cn } from "@/lib/cn";
 import { kitchenQueue, type StationFilter } from "@/lib/selectors";
+import { TabBar } from "@/components/ui/tab-bar";
+import { FlameIcon, ListIcon } from "@/components/ui/icons";
 
 type Section = "queue" | "menu";
 
@@ -44,7 +47,7 @@ export const KitchenApp = () => {
 
   if (state.status === "error") {
     return (
-      <main id="conteudo" className="mx-auto w-full max-w-md px-4 py-20">
+      <CenteredScreen wide>
         <section className={`${CARD} p-6 text-center`}>
           <h1 className="text-2xl font-bold">Não deu para carregar</h1>
           <p className="mt-2 text-muted">{state.message}</p>
@@ -52,7 +55,7 @@ export const KitchenApp = () => {
             Tentar de novo
           </button>
         </section>
-      </main>
+      </CenteredScreen>
     );
   }
 
@@ -87,36 +90,25 @@ export const KitchenApp = () => {
             </button>
           ))}
         </div>
-        <nav aria-label="Seções" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:static md:border-0 md:bg-transparent">
-          <ul className="grid grid-cols-2 md:flex md:gap-2">
-            {(
-              [
-                ["queue", "Fila", queue.sent.length],
-                ["menu", "Cardápio", data.menu.items.filter((item) => !item.available).length],
-              ] as const
-            ).map(([id, label, count]) => (
-              <li key={id}>
-                <button
-                  type="button"
-                  aria-current={section === id ? "page" : undefined}
-                  onClick={() => setSection(id)}
-                  className={cn(
-                    "flex min-h-16 w-full items-center justify-center gap-2 font-semibold md:min-h-10 md:px-4",
-                    section === id ? "text-accent" : "text-muted",
-                  )}
-                >
-                  {label}
-                  {count > 0 && <span className="rounded-full bg-border px-2 text-sm text-foreground">{count}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+        <TabBar
+          layout="responsive"
+          current={section}
+          onSelect={setSection}
+          items={[
+            { id: "queue", label: "Fila", icon: FlameIcon, badge: queue.sent.length, urgent: true },
+            {
+              id: "menu",
+              label: "Cardápio",
+              icon: ListIcon,
+              badge: data.menu.items.filter((item) => !item.available).length,
+            },
+          ]}
+        />
       </div>
 
       <main id="conteudo" className="mx-auto w-full max-w-6xl flex-1 px-4 py-5">
         {message && (
-          <p className="mb-4 rounded-xl bg-red-100 p-3 text-sm font-medium text-red-900 dark:bg-red-900/40 dark:text-red-100" role="alert">
+          <p className="mb-4 rounded-2xl bg-danger-soft p-3 text-sm font-medium text-danger" role="alert">
             {message}
           </p>
         )}

@@ -1,6 +1,7 @@
 "use client";
 
-import { BUTTON, CARD, INPUT } from "@/components/ui/styles";
+import { MenuPhoto } from "@/components/ui/menu-photo";
+import { BUTTON, CARD, INPUT, PANEL } from "@/components/ui/styles";
 import { cartTotal, unavailableInCart, type Cart, type CartAction } from "@/lib/cart";
 import { formatCents } from "@/lib/money";
 import { LIMITS } from "@/lib/store/input";
@@ -49,19 +50,22 @@ export const CartView = ({ menu, cart, dispatch, tabName, needsApproval, sending
           return (
             <li key={line.menuItemId} className={`${CARD} flex flex-col gap-3 p-4`}>
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold">{name}</h3>
-                  <p className="text-sm text-muted">
-                    {line.quantity} × {formatCents(item?.priceCents ?? 0)}
-                  </p>
-                  {soldOut.has(line.menuItemId) && (
-                    <p className="mt-1 text-sm font-semibold text-red-700 dark:text-red-400">Esgotou. Tire do pedido.</p>
-                  )}
+                <div className="flex min-w-0 items-start gap-3">
+                  <MenuPhoto src={item?.photoUrl} alt={name} sizes="56px" className="size-14 rounded-xl" />
+                  <div className="min-w-0">
+                    <h3 className="font-semibold">{name}</h3>
+                    <p className="text-sm text-muted">
+                      {line.quantity} × {formatCents(item?.priceCents ?? 0)}
+                    </p>
+                    {soldOut.has(line.menuItemId) && (
+                      <p className="mt-1 text-sm font-semibold text-danger">Esgotou. Tire do pedido.</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className={BUTTON.icon}
+                    className={BUTTON.iconSmall}
                     aria-label={`Tirar um ${name}`}
                     onClick={() => dispatch({ type: "decrement", menuItemId: line.menuItemId })}
                   >
@@ -70,7 +74,7 @@ export const CartView = ({ menu, cart, dispatch, tabName, needsApproval, sending
                   <span className="min-w-6 text-center font-bold">{line.quantity}</span>
                   <button
                     type="button"
-                    className={BUTTON.icon}
+                    className={BUTTON.iconAccent}
                     aria-label={`Mais um ${name}`}
                     disabled={soldOut.has(line.menuItemId)}
                     onClick={() => dispatch({ type: "add", menuItemId: line.menuItemId })}
@@ -94,22 +98,22 @@ export const CartView = ({ menu, cart, dispatch, tabName, needsApproval, sending
         })}
       </ul>
 
-      <div className={`${CARD} flex items-center justify-between p-4`}>
+      <div className={`${PANEL} flex items-center justify-between p-4`}>
         <span className="font-semibold">Total dos itens</span>
-        <span className="text-lg font-bold">{formatCents(cartTotal(cart, menu.items))}</span>
+        <span className="font-display text-2xl font-bold">{formatCents(cartTotal(cart, menu.items))}</span>
       </div>
       {needsApproval && (
-        <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+        <p className="rounded-2xl bg-warning-soft p-3 text-sm font-medium text-warning">
           No primeiro pedido, o garçom confirma antes de mandar para a cozinha.
         </p>
       )}
       {message && (
-        <p className="text-sm font-medium text-red-700 dark:text-red-400" role="alert">
+        <p className="text-sm font-medium text-danger" role="alert">
           {message}
         </p>
       )}
-      <div className="flex flex-wrap gap-3">
-        <button type="button" className={BUTTON.primary} disabled={sending || soldOut.size > 0} onClick={onSend}>
+      <div className="flex flex-col gap-2">
+        <button type="button" className={BUTTON.primaryLarge} disabled={sending || soldOut.size > 0} onClick={onSend}>
           {sending ? "Enviando…" : "Enviar pedido"}
         </button>
         <button type="button" className={BUTTON.ghost} onClick={onBack}>

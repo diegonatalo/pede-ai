@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { MenuItemForm, type MenuItemFields } from "@/components/manager/menu-item-form";
-import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
+import { MenuPhoto } from "@/components/ui/menu-photo";
+import { BADGE, BUTTON, CARD, EMPTY, INPUT, LABEL } from "@/components/ui/styles";
 import { cn } from "@/lib/cn";
 import { STATION_LABEL } from "@/lib/labels";
 import { MENU_LIMITS, type MenuChange } from "@/lib/menu-editor";
@@ -15,8 +16,6 @@ type Props = {
   busy: string | null;
   run: (key: string, path: string, body?: unknown) => Promise<boolean>;
 };
-
-const SMALL = "min-h-10 px-3 text-sm";
 
 /** O que está aberto: um formulário ou a confirmação de uma exclusão. */
 type Open =
@@ -98,7 +97,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className={cn(BUTTON.secondary, SMALL)}
+              className={BUTTON.small}
               disabled={first || busy === category.id}
               onClick={() => void change(category.id, { type: "move_category", id: category.id, direction: "up" })}
               aria-label={`Subir a categoria ${category.name}`}
@@ -107,7 +106,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
             </button>
             <button
               type="button"
-              className={cn(BUTTON.secondary, SMALL)}
+              className={BUTTON.small}
               disabled={last || busy === category.id}
               onClick={() => void change(category.id, { type: "move_category", id: category.id, direction: "down" })}
               aria-label={`Descer a categoria ${category.name}`}
@@ -116,7 +115,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
             </button>
             <button
               type="button"
-              className={cn(BUTTON.ghost, SMALL)}
+              className={BUTTON.smallGhost}
               onClick={() => setOpen({ kind: "rename", categoryId: category.id })}
               aria-label={`Renomear a categoria ${category.name}`}
             >
@@ -139,7 +138,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
       )}
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted">Nenhum item nesta categoria.</p>
+        <p className={EMPTY}>Nenhum item nesta categoria.</p>
       ) : (
         <ul className="flex flex-col divide-y divide-border" aria-label={`Itens de ${category.name}`}>
           {items.map((item, index) =>
@@ -155,25 +154,29 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
                 />
               </li>
             ) : (
-              <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                <div className="min-w-0 sm:flex-1">
-                  <p className="font-semibold">
-                    {item.name}
-                    {!item.available && (
-                      <span className="ml-2 rounded-full bg-border px-2 py-0.5 text-xs font-semibold text-muted">
-                        esgotado
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-muted">
-                    {formatCents(item.priceCents)} · {STATION_LABEL[item.station]}
-                  </p>
-                  {item.description && <p className="text-sm text-muted">{item.description}</p>}
+              <li key={item.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+                  <MenuPhoto
+                    src={item.photoUrl}
+                    alt={item.name}
+                    sizes="64px"
+                    className={cn("size-16 rounded-2xl", !item.available && "opacity-50 grayscale")}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">
+                      {item.name}
+                      {!item.available && <span className={cn(BADGE.neutral, "ml-2")}>esgotado</span>}
+                    </p>
+                    <p className="text-sm text-muted">
+                      {formatCents(item.priceCents)} · {STATION_LABEL[item.station]}
+                    </p>
+                    {item.description && <p className="line-clamp-2 text-sm text-muted">{item.description}</p>}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className={cn(BUTTON.secondary, SMALL)}
+                    className={BUTTON.small}
                     disabled={index === 0 || busy === item.id}
                     onClick={() => void change(item.id, { type: "move_item", id: item.id, direction: "up" })}
                     aria-label={`Subir ${item.name}`}
@@ -182,7 +185,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
                   </button>
                   <button
                     type="button"
-                    className={cn(BUTTON.secondary, SMALL)}
+                    className={BUTTON.small}
                     disabled={index === items.length - 1 || busy === item.id}
                     onClick={() => void change(item.id, { type: "move_item", id: item.id, direction: "down" })}
                     aria-label={`Descer ${item.name}`}
@@ -191,7 +194,7 @@ const CategorySection = ({ category, categories, items, first, last, open, setOp
                   </button>
                   <button
                     type="button"
-                    className={cn(BUTTON.ghost, SMALL)}
+                    className={BUTTON.smallGhost}
                     onClick={() => setOpen({ kind: "edit_item", itemId: item.id })}
                     aria-label={`Editar ${item.name}`}
                   >
@@ -251,19 +254,19 @@ const DeleteButton = ({ label, confirming, busy, onAsk, onCancel, onConfirm }: D
     <>
       <button
         type="button"
-        className={cn(BUTTON.secondary, SMALL, "border-red-600 text-red-700 dark:text-red-300")}
+        className={BUTTON.smallDanger}
         disabled={busy}
         onClick={onConfirm}
         aria-label={`Confirmar exclusão de ${label}`}
       >
         Confirmar exclusão
       </button>
-      <button type="button" className={cn(BUTTON.ghost, SMALL)} onClick={onCancel}>
+      <button type="button" className={BUTTON.smallGhost} onClick={onCancel}>
         Cancelar
       </button>
     </>
   ) : (
-    <button type="button" className={cn(BUTTON.ghost, SMALL)} onClick={onAsk} aria-label={`Excluir ${label}`}>
+    <button type="button" className={BUTTON.smallGhost} onClick={onAsk} aria-label={`Excluir ${label}`}>
       Excluir
     </button>
   );

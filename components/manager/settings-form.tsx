@@ -90,7 +90,7 @@ export const SettingsForm = ({ restaurant, onSaved }: Props) => {
       </label>
       {message && (
         <p
-          className={message.ok ? "text-sm font-medium text-emerald-700 dark:text-emerald-400" : "text-sm font-medium text-red-700 dark:text-red-400"}
+          className={message.ok ? "text-sm font-medium text-success" : "text-sm font-medium text-danger"}
           role={message.ok ? "status" : "alert"}
         >
           {message.text}

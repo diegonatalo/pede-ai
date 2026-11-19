@@ -1,6 +1,6 @@
 "use client";
 
-import { BUTTON, CARD } from "@/components/ui/styles";
+import { BUTTON, CARD, COUNT, EMPTY } from "@/components/ui/styles";
 import { useNow } from "@/hooks/use-now";
 import { CALL_REASON_LABEL, STATION_LABEL } from "@/lib/labels";
 import { activeCalls, minutesSince, pendingApprovals, pickupQueue } from "@/lib/selectors";
@@ -17,7 +17,7 @@ const Waited = ({ since }: { since: string }) => {
   if (!now) return null;
   const minutes = minutesSince(since, now);
   return (
-    <span className={minutes >= 10 ? "whitespace-nowrap font-semibold text-red-700 dark:text-red-400" : "whitespace-nowrap text-muted"}>
+    <span className={minutes >= 10 ? "whitespace-nowrap font-semibold text-danger" : "whitespace-nowrap text-muted"}>
       {minutes === 0 ? "agora" : `há ${minutes} min`}
     </span>
   );
@@ -27,9 +27,9 @@ const Section = ({ title, count, children }: { title: string; count: number; chi
   <section aria-labelledby={`secao-${title}`} className="flex flex-col gap-3">
     <h2 id={`secao-${title}`} className="flex items-center gap-2 text-lg font-bold">
       {title}
-      <span className="rounded-full bg-border px-2 text-sm">{count}</span>
+      <span className={COUNT}>{count}</span>
     </h2>
-    {count === 0 ? <p className="text-sm text-muted">Nada por aqui.</p> : children}
+    {count === 0 ? <p className={EMPTY}>Nada por aqui.</p> : children}
   </section>
 );
 
@@ -44,7 +44,7 @@ export const NowPanel = ({ sessions, busy, run }: Props) => {
       <Section title="Confirmar pedidos" count={approvals.length}>
         <ul className="grid gap-3 md:grid-cols-2">
           {approvals.map(({ session, tab, items }) => (
-            <li key={tab.id} className={`${CARD} flex flex-col gap-3 border-amber-400 p-4`}>
+            <li key={tab.id} className={`${CARD} flex flex-col gap-3 border-warning p-4`}>
               <div className="flex items-baseline justify-between gap-2">
                 <h3 className="font-bold">
                   {session.table.label} · {tab.customerName}
@@ -80,7 +80,7 @@ export const NowPanel = ({ sessions, busy, run }: Props) => {
           {pickups.map(({ table, tabName, item }) => {
             const ready = item.status === "ready";
             return (
-              <li key={item.id} className={`${CARD} flex flex-col gap-3 p-4 ${ready ? "border-emerald-500" : ""}`}>
+              <li key={item.id} className={`${CARD} flex flex-col gap-3 p-4 ${ready ? "border-success" : ""}`}>
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="font-bold">
                     {item.quantity}× {item.nameSnapshot}
@@ -113,7 +113,7 @@ export const NowPanel = ({ sessions, busy, run }: Props) => {
           {calls.map(({ table, tabName, call }) => {
             const open = call.status === "open";
             return (
-              <li key={call.id} className={`${CARD} flex flex-col gap-3 p-4 ${open ? "border-sky-500" : ""}`}>
+              <li key={call.id} className={`${CARD} flex flex-col gap-3 p-4 ${open ? "border-info" : ""}`}>
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="font-bold">
                     {table.label}

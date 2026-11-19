@@ -75,6 +75,8 @@ export type MenuItem = {
   priceCents: Cents;
   station: Station;
   available: boolean;
+  /** Foto do item (envio pelo gerente na próxima etapa). Sem ela, as telas mostram uma ilustração. */
+  photoUrl?: string;
 };
 
 export type TableSessionStatus = "open" | "closed";

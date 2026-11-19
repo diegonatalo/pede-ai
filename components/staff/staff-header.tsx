@@ -1,10 +1,10 @@
 "use client";
 
 import { ROLE_LABEL } from "@/components/staff/staff-login";
-import { BUTTON } from "@/components/ui/styles";
+import { UtensilsIcon } from "@/components/ui/icons";
+import { BUTTON, EYEBROW } from "@/components/ui/styles";
 import type { StaffRole } from "@/lib/api/identity";
 import { useApi } from "@/hooks/use-restaurant";
-import { cn } from "@/lib/cn";
 
 type Props = {
   role: StaffRole;
@@ -25,27 +25,32 @@ export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggl
   };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur print:hidden">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-3">
-        <div>
-          <p className="text-xs font-semibold tracking-wide text-accent uppercase">{restaurantName}</p>
-          <h1 className="text-lg font-bold">
-            {ROLE_LABEL[role]}
-            {personName && <span className="font-normal text-muted"> · {personName}</span>}
-          </h1>
+    <header className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur-lg print:hidden">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-2xl bg-accent text-on-accent shadow-soft" aria-hidden="true">
+            <UtensilsIcon className="size-5" strokeWidth={2.1} />
+          </span>
+          <div>
+            <p className={EYEBROW}>{restaurantName}</p>
+            <h1 className="text-lg leading-tight font-bold">
+              {ROLE_LABEL[role]}
+              {personName && <span className="font-normal text-muted"> · {personName}</span>}
+            </h1>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {onToggleSound && (
             <button
               type="button"
-              className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm", soundOn && "border-accent text-accent")}
+              className={soundOn ? BUTTON.smallPrimary : BUTTON.small}
               aria-pressed={soundOn}
               onClick={onToggleSound}
             >
               {soundOn ? "Som ligado" : "Ligar som"}
             </button>
           )}
-          <button type="button" className={cn(BUTTON.ghost, "min-h-10 px-4 text-sm")} onClick={() => void logout()}>
+          <button type="button" className={BUTTON.smallGhost} onClick={() => void logout()}>
             Sair
           </button>
         </div>

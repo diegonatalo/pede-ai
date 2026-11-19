@@ -38,7 +38,7 @@ export const OrdersList = ({ view, onCancel, busyItemId, onBrowse }: Props) => {
         Seus pedidos
       </h2>
       {waiting && (
-        <p className="rounded-xl bg-amber-100 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" role="status">
+        <p className="rounded-2xl bg-warning-soft p-3 text-sm font-medium text-warning" role="status">
           O garçom vai confirmar seu primeiro pedido e ele segue para a cozinha.
         </p>
       )}
@@ -65,7 +65,7 @@ export const OrdersList = ({ view, onCancel, busyItemId, onBrowse }: Props) => {
                     {checkItemTransition(item.status, "canceled", "customer").ok && (
                       <button
                         type="button"
-                        className="text-sm font-semibold text-red-700 underline-offset-2 hover:underline disabled:opacity-50 dark:text-red-400"
+                        className="text-sm font-semibold text-danger underline-offset-2 hover:underline disabled:opacity-50"
                         disabled={busyItemId === item.id}
                         onClick={() => onCancel(item.id)}
                         aria-label={`Cancelar ${item.nameSnapshot}`}

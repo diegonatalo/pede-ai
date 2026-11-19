@@ -1,41 +1,99 @@
 @import "tailwindcss";
 
+/*
+ * Identidade do Pede Aí: papel quente, tinta café e um laranja-tomate de destaque.
+ * As cores de estado (sucesso, atenção, perigo, informação) têm versão forte (texto, borda)
+ * e suave (fundo), com contraste AA entre as duas nos dois temas.
+ */
 :root {
-  --background: #fffaf5;
-  --foreground: #1c1917;
+  --background: #f8f4ee;
+  --foreground: #1d1713;
   --card: #ffffff;
-  --border: #e7dfd6;
-  --muted: #57534e;
-  --accent: #c2410c;
+  --surface: #f1ebe3;
+  --border: #e6ddd2;
+  --muted: #6a5f55;
+  --accent: #c43d16;
+  --accent-strong: #a3310f;
+  --accent-soft: #fbe5dc;
   --on-accent: #ffffff;
+  --success: #17803d;
+  --success-soft: #dcf3e3;
+  --warning: #9a4b06;
+  --warning-soft: #fdefd3;
+  --danger: #b4231b;
+  --danger-soft: #fce4e1;
+  --info: #0b5f8a;
+  --info-soft: #dceef8;
+  --shadow: 29 23 19;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f0c0a;
+    --foreground: #f6f0e8;
+    --card: #1a1512;
+    --surface: #231d19;
+    --border: #342c26;
+    --muted: #ab9f94;
+    --accent: #ff7a4a;
+    --accent-strong: #ff9670;
+    --accent-soft: #3a1f15;
+    --on-accent: #1a0c06;
+    --success: #5ad38a;
+    --success-soft: #12301e;
+    --warning: #f6b54a;
+    --warning-soft: #352409;
+    --danger: #ff8a7e;
+    --danger-soft: #3d1613;
+    --info: #6cc4f2;
+    --info-soft: #0f2a3a;
+    --shadow: 0 0 0;
+  }
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-surface: var(--surface);
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-bricolage);
+  --shadow-soft: 0 1px 2px rgb(var(--shadow) / 0.06), 0 8px 24px -12px rgb(var(--shadow) / 0.18);
+  --shadow-lift: 0 2px 4px rgb(var(--shadow) / 0.08), 0 18px 40px -16px rgb(var(--shadow) / 0.3);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #14110f;
-    --foreground: #f5f0eb;
-    --card: #1f1a17;
-    --border: #3a322c;
-    --muted: #b8aea5;
-    --accent: #fb923c;
-    --on-accent: #14110f;
+@layer base {
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  /* Títulos com a fonte de display, levemente mais apertada. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--foreground);
+  }
 }

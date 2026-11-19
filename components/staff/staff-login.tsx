@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import type { StaffRole } from "@/lib/api/identity";
 import { useApi } from "@/hooks/use-restaurant";
@@ -34,7 +35,7 @@ export const StaffLogin = ({ role, onLoggedIn }: Props) => {
   };
 
   return (
-    <main id="conteudo" className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-10">
+    <CenteredScreen>
       <form onSubmit={submit} className={`${CARD} flex flex-col gap-4 p-6`}>
         <div>
           <p className="text-sm font-semibold text-accent">Equipe</p>
@@ -54,7 +55,7 @@ export const StaffLogin = ({ role, onLoggedIn }: Props) => {
           />
         </label>
         {message && (
-          <p className="text-sm font-medium text-red-700 dark:text-red-400" role="alert">
+          <p className="text-sm font-medium text-danger" role="alert">
             {message}
           </p>
         )}
@@ -62,6 +63,6 @@ export const StaffLogin = ({ role, onLoggedIn }: Props) => {
           {sending ? "Entrando…" : "Entrar"}
         </button>
       </form>
-    </main>
+    </CenteredScreen>
   );
 };
