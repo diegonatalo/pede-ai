@@ -9,6 +9,7 @@ const PAGES = [
   { path: "/garcom", heading: "Garçom" },
   { path: "/cozinha", heading: "Cozinha e bar" },
   { path: "/gerente", heading: "Gerente" },
+  { path: "/conta", heading: "Entrar na sua conta" },
 ];
 
 for (const { path, heading } of PAGES) {

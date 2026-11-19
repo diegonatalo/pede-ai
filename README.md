@@ -109,7 +109,9 @@ Todas são opcionais no computador: sem banco, os dados ficam na memória do ser
 | `DATABASE_URL_UNPOOLED` | Conexão direta, usada pelas migrações (`pnpm db:migrate`). | Usa a `DATABASE_URL` |
 | `PEDE_AI_STORE` | `postgres` para usar o banco no computador. Fora da Vercel, o padrão é a memória, para o `pnpm dev` e o E2E não gravarem no banco de produção. | Memória |
 | `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
-| `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe. Obrigatória com mais de um servidor. | Gera uma chave aleatória a cada início do servidor |
+| `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe e, sem `BETTER_AUTH_SECRET`, também as sessões das contas. **Obrigatória na Vercel**: lá há várias instâncias, e cada uma geraria a própria chave. | Gera uma chave aleatória a cada início do servidor |
+| `BETTER_AUTH_SECRET` | Chave só do login das contas (Better Auth), se quiser separada da `SESSION_SECRET`. | Usa a `SESSION_SECRET` |
+| `BETTER_AUTH_URL` | Endereço do site para o login, se for diferente do `NEXT_PUBLIC_SITE_URL`. | Na Vercel, o endereço do site; no computador, `localhost` em qualquer porta |
 | `STAFF_PIN_KITCHEN`, `STAFF_PIN_WAITER`, `STAFF_PIN_MANAGER` | PIN de cada papel da equipe. | PINs da demo: `1111`, `2222` e `3333` |
 | `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://dn-pede-ai.vercel.app` |
 
@@ -119,11 +121,11 @@ Todas são opcionais no computador: sem banco, os dados ficam na memória do ser
 pnpm test
 ```
 
-Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, o link e o QR de cada mesa, a descrição do mapa em palavras, os números do dia (faturamento, ticket por pessoa, tempos médios de preparo e de entrega, mais pedidos), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) , da cozinha (fila, esgotar item) e do gerente (números, QR codes, ajustes de taxa, couvert e confirmação), o mapa do salão, a camada de dados (o mesmo contrato roda na memória e, com `TEST_DATABASE_URL`, no Postgres; tentativas de novo quando duas gravações se cruzam) (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
+Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, o link e o QR de cada mesa, a descrição do mapa em palavras, os números do dia (faturamento, ticket por pessoa, tempos médios de preparo e de entrega, mais pedidos), o login das contas (criar, entrar, senha errada, e-mail repetido), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) , da cozinha (fila, esgotar item) e do gerente (números, QR codes, ajustes de taxa, couvert e confirmação), o mapa do salão, a camada de dados (o mesmo contrato roda na memória e, com `TEST_DATABASE_URL`, no Postgres; tentativas de novo quando duas gravações se cruzam) (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
 
-Os testes de ponta a ponta (Playwright, em `e2e/`) abrem o app no Chromium contra o build de produção e conferem que as páginas abrem sem erros, que a 404 leva de volta ao início dois casais e uma amiga na mesma mesa, cada um com a sua comanda, dividindo um vinho em partes diferentes e conferindo o total de cada conta centavo a centavo até o garçom receber e fechar a mesa, o chamado do garçom do celular até a tela dele, a cozinha e o bar preparando pela fila e esgotando um item enquanto o cliente acompanha, o garçom abrindo a mesa, confirmando, entregando, recebendo e fechando enquanto o cliente acompanha pelo celular, o pedido pela tela com dois celulares na mesma mesa (cada um vê só os próprios pedidos, o estado atualiza sozinho e nada se perde ao recarregar) e o fluxo completo pela API, com aparelhos separados: o garçom abre a mesa, o cliente entra com o código e pede, a cozinha prepara, o garçom entrega e fecha a mesa.
+Os testes de ponta a ponta (Playwright, em `e2e/`) abrem o app no Chromium contra o build de produção e conferem que as páginas abrem sem erros, que a 404 leva de volta ao início dois casais e uma amiga na mesma mesa, cada um com a sua comanda, dividindo um vinho em partes diferentes e conferindo o total de cada conta centavo a centavo até o garçom receber e fechar a mesa, o chamado do garçom do celular até a tela dele, o dono criando a conta, saindo e entrando de novo, a cozinha e o bar preparando pela fila e esgotando um item enquanto o cliente acompanha, o garçom abrindo a mesa, confirmando, entregando, recebendo e fechando enquanto o cliente acompanha pelo celular, o pedido pela tela com dois celulares na mesma mesa (cada um vê só os próprios pedidos, o estado atualiza sozinho e nada se perde ao recarregar) e o fluxo completo pela API, com aparelhos separados: o garçom abre a mesa, o cliente entra com o código e pede, a cozinha prepara, o garçom entrega e fecha a mesa.
 
 ```bash
 pnpm exec playwright install chromium   # só na primeira vez
@@ -141,11 +143,11 @@ pnpm test:e2e                           # gera o build e testa contra ele
 ```text
 app/              Rotas (página inicial, 404, erros, robots, sitemap, imagem OG)
 app/api/          Route Handlers finos sobre os serviços de lib/api
-components/       Corpo das telas (customer/ para o celular do cliente, waiter/, kitchen/, manager/ e staff/ para a equipe, ui/ para estilos comuns)
+components/       Corpo das telas (account/ para a conta do dono, customer/ para o celular do cliente, waiter/, kitchen/, manager/ e staff/ para a equipe, ui/ para estilos comuns)
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
-lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e migrações) e dados de demonstração
+lib/              Lógica pura (dinheiro, estados, conta), login das contas (lib/auth, Better Auth), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e migrações) e dados de demonstração
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 ```
 
@@ -164,6 +166,7 @@ types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 | **Sessão da mesa** | O garçom abre a mesa quando o grupo senta. Só dá para pedir com a mesa aberta e o código de 4 dígitos. |
 | **Comanda** | Cada pessoa (ou aparelho) tem a sua. O primeiro pedido de cada comanda passa pela confirmação do garçom. |
 | **Item** | Enviado → em preparo → pronto → retirado → entregue. Cada item vai para a cozinha ou para o bar. |
+| **Conta do dono** | O dono do restaurante cria a conta com e-mail e senha (Better Auth; senha guardada só como hash, sessões no banco). Sem serviço externo: por enquanto não há confirmação de e-mail nem redefinição por link. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN do papel (cozinha, garçom ou gerente). |
 | **Duas pessoas ao mesmo tempo** | Cada mesa tem uma versão. Uma gravação só vale se ninguém gravou a mesma mesa desde a leitura; se gravou, o app relê e tenta de novo. |
 | **Conta** | Calculada por comanda, em centavos inteiros: itens próprios, partes de itens divididos, taxa de serviço e couvert. |
@@ -186,6 +189,7 @@ Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate`, revise a migraçã
 - [x] Banco de dados (Postgres no Neon, com Drizzle) para funcionar em vários aparelhos.
 - [x] Tela do gerente: salão, números do dia e ajustes (taxa, couvert, confirmação do primeiro pedido).
 - [x] QR codes para imprimir (um por mesa) e mapa do salão no celular do cliente.
+- [x] Fase 2, etapa 1a: conta do dono com e-mail e senha.
 - [ ] Fase 2: chamados em tempo real, login de verdade para a equipe, pagamento e nota fiscal.
 
 ### 📄 Créditos e licença

@@ -59,5 +59,14 @@ export const HomePage = () => (
         </Link>
       </div>
     </section>
+    <section aria-labelledby="titulo-restaurantes" className={`${CARD} flex flex-col gap-3 p-6`}>
+      <h2 id="titulo-restaurantes" className="text-xl font-bold">
+        Tem um restaurante?
+      </h2>
+      <p className="text-muted">Crie a sua conta. Em breve, você cadastra o cardápio, as mesas e a equipe.</p>
+      <Link href="/conta" className={`${BUTTON.primary} self-start`}>
+        Criar conta ou entrar
+      </Link>
+    </section>
   </main>
 );
