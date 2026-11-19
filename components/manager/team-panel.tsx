@@ -5,6 +5,7 @@ import { ROLE_LABEL } from "@/components/staff/staff-login";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { useApi } from "@/hooks/use-restaurant";
 import { cn } from "@/lib/cn";
+import { ownerStaffIdFor } from "@/lib/restaurant-template";
 import type { StaffMember, StaffRole } from "@/types/domain";
 
 type Props = {
@@ -151,6 +152,7 @@ export const TeamPanel = ({ meId }: Props) => {
                   {ROLE_LABEL[member.role]}
                   {!member.active && " · desativado"}
                   {member.system && " · demonstração"}
+                  {member.id === ownerStaffIdFor(member.restaurantId) && " · dono"}
                 </p>
               </div>
               {member.system ? (
@@ -168,7 +170,7 @@ export const TeamPanel = ({ meId }: Props) => {
                       Novo PIN
                     </button>
                   )}
-                  {member.id !== meId && (
+                  {member.id !== meId && member.id !== ownerStaffIdFor(member.restaurantId) && (
                     <button
                       type="button"
                       className={cn(BUTTON.ghost, "min-h-10 px-4 text-sm")}

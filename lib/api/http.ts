@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import type { AccountUser } from "@/lib/api/account";
 import { readSessionSecret } from "@/lib/api/config";
 import {
   parseCustomerIdentity,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/api/identity";
 import { error, type ApiResult } from "@/lib/api/result";
 import { resolveStaffActor } from "@/lib/api/staff";
+import { getAuth } from "@/lib/auth/server";
 import { signToken, verifyToken } from "@/lib/signed-token";
 import { RESTAURANT } from "@/lib/seed-data";
 import { getRegistry, getStore } from "@/lib/store";
@@ -160,6 +162,23 @@ export const handleStaff = async (
     },
     options,
   );
+
+/**
+ * Rota da conta do dono (Better Auth). Lê também o cookie da equipe, que a entrada como gerente
+ * atualiza. Sem conta logada: 401 `not_signed_in`.
+ */
+export const handleAccount = async (
+  request: NextRequest,
+  run: (user: AccountUser, body: unknown, staff: StaffIdentity | null) => Promise<ApiResult> | ApiResult,
+  { json = request.method !== "GET" }: Options = {},
+) => {
+  const parsed = await readBody(request, json);
+  if (!parsed.ok) return respond(parsed.result);
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  if (!session?.user) return respond(error("not_signed_in"));
+  const user = { id: session.user.id, name: session.user.name };
+  return respond(await run(user, parsed.body, await readStaff(request)));
+};
 
 /** Tira uma tela do cookie da equipe (`null` apaga o cookie se não sobrar nenhuma). */
 const withoutSeat = (identity: StaffIdentity | null, key: string): StaffIdentity | null => {

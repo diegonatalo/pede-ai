@@ -8,7 +8,11 @@ export type ApiError =
   | "not_logged_in"
   | "wrong_pin"
   | "wrong_screen"
-  | "restaurant_not_found";
+  | "restaurant_not_found"
+  | "not_signed_in"
+  | "invalid_slug"
+  | "slug_taken"
+  | "too_many_restaurants";
 
 /**
  * Resposta de um serviço da API, sem depender do Next: os Route Handlers só a convertem.
@@ -23,6 +27,10 @@ export type ApiResult = {
 
 const STATUS: Record<ApiError, number> = {
   invalid_input: 400,
+  invalid_slug: 400,
+  not_signed_in: 401,
+  slug_taken: 409,
+  too_many_restaurants: 409,
   empty: 400,
   invalid_parts: 400,
   duplicate_tab: 400,
@@ -61,6 +69,10 @@ export const ERROR_MESSAGES: Record<ApiError, string> = {
   forbidden: "Você não pode fazer isso.",
   not_found: "Não encontrado.",
   restaurant_not_found: "Restaurante não encontrado. Confira o endereço.",
+  not_signed_in: "Entre na sua conta para continuar.",
+  invalid_slug: "O endereço usa de 3 a 40 letras minúsculas, números e hífens (ex.: cantina-do-ze).",
+  slug_taken: "Esse endereço já está em uso. Escolha outro.",
+  too_many_restaurants: "Cada conta pode ter até 3 restaurantes por enquanto.",
   invalid_transition: "Isso não pode ser feito agora.",
   session_closed: "Esta mesa já foi fechada.",
   tab_closed: "Esta comanda não aceita novos pedidos.",

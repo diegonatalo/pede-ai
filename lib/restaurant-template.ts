@@ -16,9 +16,17 @@ export type RestaurantData = {
 /** Endereços que não podem virar restaurante (rotas do app e nomes que confundem). */
 const RESERVED_SLUGS = new Set(["demo", "api", "admin", "r", "conta", "entrar", "gerente", "garcom", "cozinha", "mesa", "suporte"]);
 
+export const isReservedSlug = (slug: string) => RESERVED_SLUGS.has(slug);
+
 /** `cantina-do-ze`: letras minúsculas, números e hífens, de 3 a 40 caracteres. */
 export const isValidSlug = (slug: string) =>
   slug.length >= 3 && slug.length <= 40 && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug) && !RESERVED_SLUGS.has(slug);
+
+/** Restaurantes por conta enquanto tudo é gratuito: evita encher o banco com restaurantes de teste. */
+export const MAX_RESTAURANTS_PER_OWNER = 3;
+
+/** Id do dono na equipe do restaurante: é por ele que a conta entra como gerente. */
+export const ownerStaffIdFor = (restaurantId: string) => `${restaurantId}-owner`;
 
 /** Sugere o endereço a partir do nome: "Cantina do Zé!" → "cantina-do-ze". */
 export const slugify = (name: string) =>
