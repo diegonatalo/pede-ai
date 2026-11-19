@@ -5,6 +5,6 @@ components/       Corpo das telas (customer/ para o celular do cliente, waiter/,
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
-lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store) e dados de demonstração
+lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e migrações) e dados de demonstração
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 ```
