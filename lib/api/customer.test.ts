@@ -55,7 +55,7 @@ describe("entrada na mesa", () => {
     expect(open.body).toMatchObject({ open: true, table: { id: "mesa-3" } });
     expect(JSON.stringify(open.body)).not.toContain("1234");
     expect((await getTableStatus(store, "mesa-1")).body).toMatchObject({ open: false });
-    expect((await getTableStatus(store, "mesa-99")).status).toBe(404);
+    expect((await getTableStatus(store, "mesa-99")).body).toEqual({ table: null, open: false });
   });
 
   it("entra com o código certo e grava o cookie", async () => {
@@ -83,7 +83,9 @@ describe("entrada na mesa", () => {
 describe("comanda e visão do cliente", () => {
   it("exige ter entrado na mesa", async () => {
     const { store } = await setup();
-    expect(errorOf(await getCustomerView(store, null))).toBe("not_joined");
+    // A leitura responde 200 com o estado; só os comandos respondem 401.
+    const guest = await getCustomerView(store, null);
+    expect(guest).toMatchObject({ status: 200, body: { state: "guest" } });
     expect(errorOf(await createCustomerTab(store, null, { customerName: "Zé", peopleCount: 1 }, NOW))).toBe(
       "not_joined",
     );
@@ -99,7 +101,11 @@ describe("comanda e visão do cliente", () => {
     const { store, couple, friend } = await setup();
     await order(store, couple.identity, couple.tab.id, "parmegiana");
     await order(store, friend.identity, friend.tab.id, "risoto");
-    const view = (await getCustomerView(store, friend.identity)).body as CustomerView & { lastSeq: number };
+    const view = (await getCustomerView(store, friend.identity)).body as CustomerView & {
+      lastSeq: number;
+      state: string;
+    };
+    expect(view.state).toBe("ready");
     expect(view.tabs.map((tab) => [tab.customerName, tab.mine])).toEqual([
       ["Ana e Rui", false],
       ["Lia", true],
@@ -115,8 +121,18 @@ describe("comanda e visão do cliente", () => {
     await store.setTabStatus(friend.tab.id, "paid", "waiter");
     await store.closeSession(sessionId, "waiter");
     const result = await getCustomerView(store, couple.identity);
-    expect(errorOf(result)).toBe("session_closed");
+    expect(result).toMatchObject({ status: 200, body: { state: "closed" } });
     expect(result.customer).toBeNull();
+  });
+
+  it("pede para reler a visão quando a mesa fecha, sem mexer no cookie", async () => {
+    const { store, sessionId, couple, friend } = await setup();
+    await store.setTabStatus(couple.tab.id, "paid", "waiter");
+    await store.setTabStatus(friend.tab.id, "paid", "waiter");
+    await store.closeSession(sessionId, "waiter");
+    const feed = await getCustomerFeed(store, couple.identity, 3);
+    expect(feed).toMatchObject({ status: 200, body: { lastSeq: 3, changed: true } });
+    expect(feed.customer).toBeUndefined();
   });
 });
 
@@ -203,6 +219,14 @@ describe("chamados e feed", () => {
     await order(store, couple.identity, couple.tab.id);
     const after = (await getCustomerFeed(store, couple.identity, first.lastSeq)).body as { changed: boolean };
     expect(after.changed).toBe(true);
+  });
+
+  it("acorda quando um item do cardápio esgota", async () => {
+    const { store, couple } = await setup();
+    const { lastSeq } = (await getCustomerFeed(store, couple.identity, 0)).body as { lastSeq: number };
+    await store.setItemAvailability("tiramisu", false, "kitchen");
+    const feed = (await getCustomerFeed(store, couple.identity, lastSeq)).body as { changed: boolean };
+    expect(feed.changed).toBe(true);
   });
 
   it("não acorda com mudanças de outra mesa", async () => {

@@ -1,7 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { collectErrors, title } from "./fixtures";
 
-const PAGES = [{ path: "/", heading: "Pede Aí" }];
+// A mesa 1 nunca é aberta pelos outros testes: aparece fechada.
+const PAGES = [
+  { path: "/", heading: "Pede Aí" },
+  { path: "/mesa/mesa-1", heading: "A mesa ainda não foi aberta" },
+  { path: "/mesa/nao-existe", heading: "Mesa não encontrada" },
+];
 
 for (const { path, heading } of PAGES) {
   test(`abre ${path} sem erros no console`, async ({ page }) => {

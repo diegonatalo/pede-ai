@@ -390,7 +390,10 @@ export const createMemoryStore = ({
       const after = events.slice(Math.max(0, afterSeq));
       return {
         events: structuredClone(
-          sessionId === undefined ? after : after.filter((event) => event.sessionId === sessionId),
+          sessionId === undefined
+            ? after
+            : // Eventos sem mesa (cardápio, configuração) valem para todas.
+              after.filter((event) => event.sessionId === sessionId || event.sessionId === undefined),
         ),
         lastSeq: events.length,
       };
