@@ -4,6 +4,6 @@ components/       Corpo das telas
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React
-lib/              Lógica pura (dinheiro) e dados de demonstração (cardápio, mesas, mapa)
+lib/              Lógica pura (dinheiro, estados, conta), camada de dados (lib/store) e dados de demonstração
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 ```
