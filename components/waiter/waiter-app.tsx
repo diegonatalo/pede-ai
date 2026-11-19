@@ -7,9 +7,9 @@ import { BUTTON, CARD } from "@/components/ui/styles";
 import { NowPanel } from "@/components/waiter/now-panel";
 import { TablesPanel } from "@/components/waiter/tables-panel";
 import { useAttentionAlert } from "@/hooks/use-attention-alert";
+import { useStaffCommand } from "@/hooks/use-staff-command";
 import { useStaffOverview } from "@/hooks/use-staff-overview";
 import { useWakeLock } from "@/hooks/use-wake-lock";
-import { apiRequest } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 import { tableBoard, waiterAttention } from "@/lib/selectors";
 
@@ -18,23 +18,12 @@ type Section = "now" | "tables";
 export const WaiterApp = () => {
   const { state, refresh } = useStaffOverview("waiter");
   const [section, setSection] = useState<Section>("now");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
+  const { busy, message, run } = useStaffCommand("waiter", refresh);
 
   const sessions = state.status === "ready" ? state.data.sessions : [];
   const attention = waiterAttention(sessions);
   const { soundOn, toggleSound } = useAttentionAlert(attention);
   useWakeLock(state.status === "ready");
-
-  /** Executa um comando da equipe e relê a tela. `key` marca qual botão fica ocupado. */
-  const run = async (key: string, path: string, body: unknown = {}) => {
-    setBusy(key);
-    setMessage("");
-    const response = await apiRequest(`${path}?role=waiter`, { method: "POST", body });
-    setBusy(null);
-    if (!response.ok) setMessage(response.message);
-    await refresh();
-  };
 
   if (state.status === "loading") {
     return (

@@ -1,6 +1,6 @@
 import { computeSessionBills, type TabBill } from "@/lib/billing";
 import { canCloseSession } from "@/lib/transitions";
-import type { OrderItem, Restaurant, Tab, Table, WaiterCall } from "@/types/domain";
+import type { OrderItem, Restaurant, Station, Tab, Table, WaiterCall } from "@/types/domain";
 import type { SessionSnapshot } from "@/types/store";
 
 /** Filas das telas da equipe, montadas a partir das mesas abertas. Funções puras. */
@@ -98,6 +98,31 @@ export const tableBoard = (
       canClose: canCloseSession(session.tabs),
     };
   });
+
+export type StationFilter = Station | "all";
+
+export type KitchenTicket = { table: Table; tabName: string; item: OrderItem };
+
+export type KitchenQueue = { sent: KitchenTicket[]; preparing: KitchenTicket[]; ready: KitchenTicket[] };
+
+/**
+ * Fila da cozinha ou do bar em três colunas, do item que espera há mais tempo.
+ * Itens aguardando o garçom ainda não chegam aqui; entregues e cancelados saem.
+ */
+export const kitchenQueue = (sessions: SessionSnapshot[], station: StationFilter): KitchenQueue => {
+  const queue: KitchenQueue = { sent: [], preparing: [], ready: [] };
+  for (const session of sessions) {
+    for (const item of session.items) {
+      if (station !== "all" && item.station !== station) continue;
+      if (item.status !== "sent" && item.status !== "preparing" && item.status !== "ready") continue;
+      queue[item.status].push({ table: session.table, tabName: tabOf(session, item)?.customerName ?? "", item });
+    }
+  }
+  for (const column of Object.values(queue)) {
+    column.sort((a, b) => a.item.updatedAt.localeCompare(b.item.updatedAt));
+  }
+  return queue;
+};
 
 /** Minutos inteiros desde `iso` (0 se for no futuro). */
 export const minutesSince = (iso: string, nowMs: number) =>

@@ -17,7 +17,7 @@ const Waited = ({ since }: { since: string }) => {
   if (!now) return null;
   const minutes = minutesSince(since, now);
   return (
-    <span className={minutes >= 10 ? "font-semibold text-red-700 dark:text-red-400" : "text-muted"}>
+    <span className={minutes >= 10 ? "whitespace-nowrap font-semibold text-red-700 dark:text-red-400" : "whitespace-nowrap text-muted"}>
       {minutes === 0 ? "agora" : `há ${minutes} min`}
     </span>
   );
