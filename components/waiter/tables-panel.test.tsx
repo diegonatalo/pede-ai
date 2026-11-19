@@ -59,7 +59,7 @@ describe("TablesPanel", () => {
     // 2 × 13,00 + 10% = 28,60
     expect(screen.getByText(/Conta pedida · R\$\s28,60/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Fechar a Mesa 1" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Marcar a comanda de Ana como paga" }));
+    await userEvent.click(screen.getByRole("button", { name: "Marcar a comanda de Ana (Mesa 1) como paga" }));
     expect(run).toHaveBeenCalledWith("ana", "/api/staff/tabs/ana/status", { to: "paid" });
   });
 

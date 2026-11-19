@@ -43,6 +43,24 @@ export const openTable = async (staff: APIRequestContext, tableId: string) => {
   return (await response.json()) as { session: { id: string }; joinCode: string };
 };
 
+/**
+ * Abre a mesa limpa: se ela ficou aberta de uma tentativa anterior, paga as comandas,
+ * fecha e abre de novo. Para testes que contam comandas ou repetem nomes.
+ */
+export const openFreshTable = async (staff: APIRequestContext, tableId: string) => {
+  const opened = await openTable(staff, tableId);
+  const overview = await (await staff.get("/api/staff/overview?role=waiter")).json();
+  const current = overview.sessions.find((entry: { session: { id: string } }) => entry.session.id === opened.session.id);
+  if (current.tabs.length === 0) return opened;
+  for (const tab of current.tabs as { id: string; status: string }[]) {
+    if (tab.status === "open" || tab.status === "bill_requested") {
+      await staff.post(`/api/staff/tabs/${tab.id}/status?role=waiter`, json({ to: "paid" }));
+    }
+  }
+  expect((await staff.post(`/api/staff/sessions/${opened.session.id}/close?role=waiter`, json({}))).ok()).toBe(true);
+  return openTable(staff, tableId);
+};
+
 /** Ids das comandas de uma mesa, na ordem em que foram abertas. */
 export const tabIdsOf = async (staff: APIRequestContext, sessionId: string) => {
   const overview = await (await staff.get("/api/staff/overview?role=waiter")).json();
