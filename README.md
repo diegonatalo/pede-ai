@@ -112,11 +112,11 @@ Todas são opcionais na demonstração.
 pnpm test
 ```
 
-Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos), a camada de dados em memória (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
+Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos) e do garçom (login por PIN, agora, mesas), a camada de dados em memória (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
 
-Os testes de ponta a ponta (Playwright, em `e2e/`) abrem o app no Chromium contra o build de produção e conferem que as páginas abrem sem erros, que a 404 leva de volta ao início o pedido pela tela com dois celulares na mesma mesa (cada um vê só os próprios pedidos, o estado atualiza sozinho e nada se perde ao recarregar) e o fluxo completo pela API, com aparelhos separados: o garçom abre a mesa, o cliente entra com o código e pede, a cozinha prepara, o garçom entrega e fecha a mesa.
+Os testes de ponta a ponta (Playwright, em `e2e/`) abrem o app no Chromium contra o build de produção e conferem que as páginas abrem sem erros, que a 404 leva de volta ao início o garçom abrindo a mesa, confirmando, entregando, recebendo e fechando enquanto o cliente acompanha pelo celular, o pedido pela tela com dois celulares na mesma mesa (cada um vê só os próprios pedidos, o estado atualiza sozinho e nada se perde ao recarregar) e o fluxo completo pela API, com aparelhos separados: o garçom abre a mesa, o cliente entra com o código e pede, a cozinha prepara, o garçom entrega e fecha a mesa.
 
 ```bash
 pnpm exec playwright install chromium   # só na primeira vez
@@ -134,10 +134,10 @@ pnpm test:e2e                           # gera o build e testa contra ele
 ```text
 app/              Rotas (página inicial, 404, erros, robots, sitemap, imagem OG)
 app/api/          Route Handlers finos sobre os serviços de lib/api
-components/       Corpo das telas (customer/ para o celular do cliente, ui/ para estilos comuns)
+components/       Corpo das telas (customer/ para o celular do cliente, waiter/ e staff/ para a equipe, ui/ para estilos comuns)
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
-hooks/            Estado e efeitos de React (polling do feed, visão do cliente)
+hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
 lib/              Lógica pura (dinheiro, estados, conta), serviços da API (lib/api), camada de dados (lib/store) e dados de demonstração
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 ```
@@ -164,11 +164,14 @@ types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 
 Publicado na [Vercel](https://vercel.com), que faz deploy só da branch `main` (`vercel.json`). Para trocar de domínio, defina `NEXT_PUBLIC_SITE_URL` no build.
 
+A demonstração guarda os dados na memória do servidor: funciona com um processo só (`pnpm start`) e os dados somem quando ele reinicia. Na Vercel, cada requisição pode cair numa instância diferente, então a versão publicada vai depender do banco (Postgres), que é uma etapa própria.
+
 ### 🧭 Próximos passos
 
 - [ ] Domínio: tipos, estados do pedido e cálculo da conta por comanda.
 - [x] Tela do cliente: entrar com o código, abrir a comanda, cardápio, carrinho e pedidos.
-- [ ] Telas da cozinha, do bar e do garçom; chamar o garçom e conta pelo celular.
+- [x] Tela do garçom: login por PIN, abrir mesa, confirmar o primeiro pedido, retirar e entregar, receber e fechar.
+- [ ] Telas da cozinha e do bar; chamar o garçom e conta pelo celular.
 - [ ] Banco de dados (Postgres) para funcionar em vários aparelhos.
 - [ ] Visão do gerente, QR codes para imprimir e mapa do salão.
 
