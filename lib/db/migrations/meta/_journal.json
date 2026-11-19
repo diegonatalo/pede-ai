@@ -15,6 +15,13 @@
       "when": 1795054736090,
       "tag": "0001_session_version_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795099269116,
+      "tag": "0002_auth",
+      "breakpoints": true
     }
   ]
 }
