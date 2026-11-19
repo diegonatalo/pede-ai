@@ -6,7 +6,8 @@ export type ApiError =
   | "unsupported_media_type"
   | "not_joined"
   | "not_logged_in"
-  | "wrong_pin";
+  | "wrong_pin"
+  | "wrong_screen";
 
 /**
  * Resposta de um serviço da API, sem depender do Next: os Route Handlers só a convertem.
@@ -30,6 +31,7 @@ const STATUS: Record<ApiError, number> = {
   not_joined: 401,
   not_logged_in: 401,
   forbidden: 403,
+  wrong_screen: 403,
   not_found: 404,
   invalid_transition: 409,
   session_closed: 409,
@@ -51,6 +53,7 @@ export const ERROR_MESSAGES: Record<ApiError, string> = {
   unknown_tab: "Só dá para dividir com comandas abertas desta mesa.",
   wrong_code: "Código errado. Confira com o garçom.",
   wrong_pin: "PIN errado.",
+  wrong_screen: "Este PIN não dá acesso a esta tela. Use a tela do seu papel.",
   not_joined: "Entre na mesa com o código do garçom.",
   not_logged_in: "Entre com o PIN da equipe.",
   forbidden: "Você não pode fazer isso.",

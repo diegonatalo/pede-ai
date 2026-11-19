@@ -5,5 +5,5 @@ import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/staff/tabs/[id]/approve">) {
   const { id: tabId } = await ctx.params;
-  return handleStaff(request, (role) => approveTab(getStore(), role, tabId));
+  return handleStaff(request, (actor) => approveTab(getStore(), actor, tabId));
 }

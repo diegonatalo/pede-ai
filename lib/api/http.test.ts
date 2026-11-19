@@ -2,7 +2,9 @@
 import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { CUSTOMER_COOKIE, STAFF_COOKIE, handleCustomer, handleStaff, respond } from "@/lib/api/http";
+import type { StaffIdentity } from "@/lib/api/identity";
 import { error, success } from "@/lib/api/result";
+import { getStore } from "@/lib/store";
 
 const URL_BASE = "http://localhost/api/teste";
 
@@ -66,15 +68,44 @@ describe("handleCustomer", () => {
 });
 
 describe("handleStaff", () => {
-  it("exige o papel na URL e no cookie", async () => {
-    const saved = await respond(success({}, { staff: { roles: ["kitchen"], exp: Date.now() + 60_000 } }));
-    const cookie = cookieFrom(saved, STAFF_COOKIE);
-    const call = (role: string) =>
-      handleStaff(new NextRequest(`${URL_BASE}?role=${role}`, { headers: { cookie } }), (resolved) =>
-        success({ resolved }),
-      );
-    expect(await (await call("kitchen")).json()).toEqual({ resolved: "kitchen" });
-    expect((await call("waiter")).status).toBe(401);
-    expect((await call("customer")).status).toBe(400);
+  const cookieWith = async (seats: StaffIdentity["seats"]) =>
+    cookieFrom(await respond(success({}, { staff: { seats, exp: Date.now() + 60_000 } })), STAFF_COOKIE);
+
+  const call = (role: string, cookie: string) =>
+    handleStaff(new NextRequest(`${URL_BASE}?role=${role}`, { headers: { cookie } }), (resolved) =>
+      success({ resolved }),
+    );
+
+  it("exige alguém da equipe na tela pedida e passa quem é", async () => {
+    // Equipe da demonstração, que já existe no store em memória.
+    const cookie = await cookieWith({ kitchen: { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
+    expect(await (await call("kitchen", cookie)).json()).toEqual({
+      resolved: { role: "kitchen", staffId: "staff-demo-kitchen", name: "Cozinha da demo" },
+    });
+    expect((await call("waiter", cookie)).status).toBe(401);
+    expect((await call("customer", cookie)).status).toBe(400);
+  });
+
+  it("tira o acesso de quem foi desativado ou não existe mais, mesmo com o cookie válido", async () => {
+    const store = getStore();
+    const manager = { role: "manager" as const, staffId: "staff-demo-manager" };
+    const created = await store.createStaff({ name: "Bruno", role: "waiter" }, manager);
+    if (!created.ok) throw new Error(created.error);
+    const cookie = await cookieWith({
+      waiter: { id: created.value.member.id, name: "Bruno" },
+      kitchen: { id: "staff-demo-kitchen", name: "Cozinha da demo" },
+    });
+    expect((await call("waiter", cookie)).status).toBe(200);
+
+    await store.setStaffActive(created.value.member.id, false, manager);
+    const response = await call("waiter", cookie);
+    expect(response.status).toBe(401);
+    // A tela do garçom sai do cookie; a da cozinha continua.
+    const next = cookieFrom(response, STAFF_COOKIE);
+    expect((await call("waiter", next)).status).toBe(401);
+    expect((await call("kitchen", next)).status).toBe(200);
+
+    const ghost = await cookieWith({ waiter: { id: "ninguem", name: "Ninguém" } });
+    expect((await call("waiter", ghost)).status).toBe(401);
   });
 });

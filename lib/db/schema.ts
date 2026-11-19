@@ -14,7 +14,32 @@ export const restaurants = pgTable("restaurants", {
   serviceFeePercent: integer("service_fee_percent").notNull(),
   couvertCents: integer("couvert_cents").notNull(),
   requireFirstOrderApproval: boolean("require_first_order_approval").notNull(),
+  // Erros seguidos de PIN da equipe, para bloquear tentativas em série.
+  staffFailedAttempts: integer("staff_failed_attempts").notNull().default(0),
+  staffLockedUntil: bigint("staff_locked_until", { mode: "number" }),
 });
+
+/**
+ * Pessoas da equipe. `pin_key` é um HMAC do PIN com a chave do app (ver lib/staff-pin.ts):
+ * acha a pessoa numa consulta e impede PIN repetido no restaurante, sem guardar o PIN.
+ */
+export const staffMembers = pgTable(
+  "staff_members",
+  {
+    id: text("id").primaryKey(),
+    n: bigserial("n", { mode: "number" }).notNull(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id),
+    name: text("name").notNull(),
+    role: text("role").notNull(),
+    pinKey: text("pin_key").notNull(),
+    active: boolean("active").notNull(),
+    system: boolean("system").notNull().default(false),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [uniqueIndex("staff_members_pin_per_restaurant").on(table.restaurantId, table.pinKey)],
+);
 
 export const diningTables = pgTable("dining_tables", {
   id: text("id").primaryKey(),
@@ -174,6 +199,7 @@ export const events = pgTable("events", {
   type: text("type").notNull(),
   at: text("at").notNull(),
   actor: text("actor").notNull(),
+  actorStaffId: text("actor_staff_id"),
   sessionId: text("session_id"),
   entityId: text("entity_id").notNull(),
 });

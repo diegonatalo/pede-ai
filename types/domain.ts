@@ -8,6 +8,23 @@ export type Station = "kitchen" | "bar";
 
 export type Role = "customer" | "kitchen" | "waiter" | "manager";
 
+export type StaffRole = Exclude<Role, "customer">;
+
+/** Quem faz uma ação: só o papel (cliente, testes) ou o papel e a pessoa da equipe. */
+export type Actor = Role | { role: Role; staffId: string };
+
+/** Pessoa da equipe. O PIN nunca fica aqui: o banco guarda só uma chave derivada dele. */
+export type StaffMember = {
+  id: string;
+  restaurantId: string;
+  name: string;
+  role: StaffRole;
+  active: boolean;
+  /** Pessoas da demonstração: PIN público, não podem ser desativadas nem mudar de PIN. */
+  system: boolean;
+  createdAt: IsoDateTime;
+};
+
 export type Restaurant = {
   id: string;
   name: string;

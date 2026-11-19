@@ -4,5 +4,5 @@ import { openTable } from "@/lib/api/staff";
 import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
-  return handleStaff(request, (role, body) => openTable(getStore(), role, body));
+  return handleStaff(request, (actor, body) => openTable(getStore(), actor, body));
 }

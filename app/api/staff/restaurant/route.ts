@@ -4,5 +4,5 @@ import { updateSettings } from "@/lib/api/staff";
 import { getStore } from "@/lib/store";
 
 export async function PATCH(request: NextRequest) {
-  return handleStaff(request, (role, body) => updateSettings(getStore(), role, body));
+  return handleStaff(request, (actor, body) => updateSettings(getStore(), actor, body));
 }

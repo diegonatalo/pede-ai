@@ -5,5 +5,5 @@ import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/staff/sessions/[id]/close">) {
   const { id: sessionId } = await ctx.params;
-  return handleStaff(request, (role) => closeTable(getStore(), role, sessionId));
+  return handleStaff(request, (actor) => closeTable(getStore(), actor, sessionId));
 }

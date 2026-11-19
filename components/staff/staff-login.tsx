@@ -38,7 +38,7 @@ export const StaffLogin = ({ role, onLoggedIn }: Props) => {
         <div>
           <p className="text-sm font-semibold text-accent">Equipe</p>
           <h1 className="mt-1 text-2xl font-bold">{ROLE_LABEL[role]}</h1>
-          <p className="mt-2 text-muted">Digite o PIN para usar esta tela neste aparelho.</p>
+          <p className="mt-2 text-muted">Digite o seu PIN pessoal para usar esta tela neste aparelho.</p>
         </div>
         <label className="flex flex-col gap-2">
           <span className={LABEL}>PIN</span>

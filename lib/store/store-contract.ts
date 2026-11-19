@@ -14,13 +14,15 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
 
   const errorOf = <T>(result: Result<T>) => (result.ok ? "ok" : result.error);
 
-  /** Store com relógio controlado e ids previsíveis. */
-  const setup = () => {
+  /** Store com relógio controlado, ids previsíveis e, se pedido, PINs da equipe em sequência. */
+  const setup = (pins: string[] = []) => {
     let time = new Date("2026-11-18T20:00:00.000Z").getTime();
     let counter = 0;
+    let pinIndex = 0;
     const store = makeStore({
       now: () => new Date(time),
       newId: () => `id-${++counter}`,
+      ...(pins.length > 0 && { newPin: () => pins[Math.min(pinIndex++, pins.length - 1)] }),
     });
     const advance = (minutes: number) => {
       time += minutes * 60_000;
@@ -362,6 +364,95 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
       expect(
         errorOf(await store.createCall({ sessionId: session.id, tabId: stranger.id, reason: "question" }, "customer")),
       ).toBe("not_found");
+    });
+  });
+
+  describe("equipe", () => {
+    const manager = { role: "manager" as const, staffId: "staff-demo-manager" };
+
+    it("começa com a equipe da demonstração, que só o gerente lista", async () => {
+      const { store } = setup();
+      const team = unwrap(await store.listStaff("manager"));
+      expect(team.map((member) => [member.role, member.system, member.active])).toEqual([
+        ["kitchen", true, true],
+        ["waiter", true, true],
+        ["manager", true, true],
+      ]);
+      expect(JSON.stringify(team)).not.toMatch(/1111|2222|3333/);
+      expect(errorOf(await store.listStaff("waiter"))).toBe("forbidden");
+    });
+
+    it("entra com o PIN da pessoa e recusa PIN errado", async () => {
+      const { store } = setup();
+      expect(unwrap(await store.verifyStaffPin("2222"))).toMatchObject({ role: "waiter", name: "Garçom da demo" });
+      expect(errorOf(await store.verifyStaffPin("9999"))).toBe("wrong_pin");
+      expect(errorOf(await store.verifyStaffPin("abc"))).toBe("wrong_pin");
+    });
+
+    it("bloqueia o login da equipe depois de muitos erros seguidos, por alguns minutos", async () => {
+      const { store, advance } = setup();
+      for (let attempt = 1; attempt < 20; attempt += 1) {
+        expect(errorOf(await store.verifyStaffPin("9999"))).toBe("wrong_pin");
+      }
+      expect(errorOf(await store.verifyStaffPin("9999"))).toBe("locked");
+      expect(errorOf(await store.verifyStaffPin("2222"))).toBe("locked");
+      advance(2);
+      expect(unwrap(await store.verifyStaffPin("2222")).role).toBe("waiter");
+    });
+
+    it("cadastra a pessoa com um PIN novo, sorteando outro se o primeiro já for de alguém", async () => {
+      const { store } = setup(["482913", "482913", "650127"]);
+      const first = unwrap(await store.createStaff({ name: " Bruno ", role: "waiter" }, manager));
+      expect(first).toMatchObject({ pin: "482913", member: { name: "Bruno", role: "waiter", active: true, system: false } });
+      const second = unwrap(await store.createStaff({ name: "Carla", role: "kitchen" }, manager));
+      expect(second.pin).toBe("650127");
+      expect(unwrap(await store.verifyStaffPin("482913")).name).toBe("Bruno");
+      expect(unwrap(await store.verifyStaffPin("650127")).name).toBe("Carla");
+    });
+
+    it("só o gerente cadastra, com nome e papel válidos", async () => {
+      const { store } = setup();
+      expect(errorOf(await store.createStaff({ name: "Zé", role: "waiter" }, "waiter"))).toBe("forbidden");
+      expect(errorOf(await store.createStaff({ name: "  ", role: "waiter" }, manager))).toBe("invalid_input");
+      expect(errorOf(await store.createStaff({ name: "Zé", role: "customer" as "waiter" }, manager))).toBe("invalid_input");
+    });
+
+    it("troca o PIN: o antigo para de funcionar", async () => {
+      const { store } = setup(["111222", "333444"]);
+      const { member } = unwrap(await store.createStaff({ name: "Bruno", role: "waiter" }, manager));
+      const reset = unwrap(await store.resetStaffPin(member.id, manager));
+      expect(reset.pin).toBe("333444");
+      expect(errorOf(await store.verifyStaffPin("111222"))).toBe("wrong_pin");
+      expect(unwrap(await store.verifyStaffPin("333444")).id).toBe(member.id);
+      expect(errorOf(await store.resetStaffPin("staff-demo-waiter", manager))).toBe("forbidden");
+    });
+
+    it("desativa e reativa quem saiu, mas não a equipe da demo nem a si mesmo", async () => {
+      const { store } = setup(["555666", "777888"]);
+      const { member } = unwrap(await store.createStaff({ name: "Bruno", role: "waiter" }, manager));
+      expect(unwrap(await store.setStaffActive(member.id, false, manager)).active).toBe(false);
+      expect(errorOf(await store.verifyStaffPin("555666"))).toBe("wrong_pin");
+      unwrap(await store.setStaffActive(member.id, true, manager));
+      expect(unwrap(await store.verifyStaffPin("555666")).id).toBe(member.id);
+
+      expect(errorOf(await store.setStaffActive("staff-demo-waiter", false, manager))).toBe("forbidden");
+      unwrap(await store.setStaffActive(member.id, false, manager));
+      expect((await store.getStaffMember(member.id))?.active).toBe(false);
+      expect(await store.getStaffMember("ninguem")).toBeNull();
+      const { member: boss } = unwrap(await store.createStaff({ name: "Dona", role: "manager" }, manager));
+      expect(errorOf(await store.setStaffActive(boss.id, false, { role: "manager", staffId: boss.id }))).toBe("forbidden");
+    });
+
+    it("grava quem da equipe fez cada ação", async () => {
+      const { store } = setup();
+      const waiter = { role: "waiter" as const, staffId: "staff-demo-waiter" };
+      const session = unwrap(await store.openSession("mesa-2", "1234", waiter));
+      unwrap(await store.createTab({ sessionId: session.id, customerName: "Ana", peopleCount: 1 }, "customer"));
+      const { events } = await store.getEvents(0);
+      expect(events.map((entry) => [entry.type, entry.actor, entry.actorStaffId])).toEqual([
+        ["session_opened", "waiter", "staff-demo-waiter"],
+        ["tab_created", "customer", undefined],
+      ]);
     });
   });
 

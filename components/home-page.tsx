@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BUTTON, CARD } from "@/components/ui/styles";
-import { DEMO_PINS } from "@/lib/api/config";
+import { DEMO_PINS } from "@/lib/seed-data";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 const STEPS = [

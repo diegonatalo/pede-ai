@@ -27,6 +27,7 @@ export const storeKind = (env: Env): "postgres" | "memory" =>
 export const getStore = (): Store => {
   if (storeKind(process.env) === "postgres") {
     holder.__pedeAiPostgres ??= createStore(createPostgresRepository(process.env.DATABASE_URL as string));
+    // Repositório e motor usam a mesma chave de PIN por padrão (SESSION_SECRET).
     return holder.__pedeAiPostgres;
   }
   const fresh = holder.__pedeAiStore ? null : createMemoryStore();

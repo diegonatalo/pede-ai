@@ -64,6 +64,7 @@ export const KitchenApp = () => {
       <StaffHeader
         role="kitchen"
         restaurantName={data.restaurant.name}
+        personName={data.me?.name}
         soundOn={soundOn}
         onToggleSound={toggleSound}
         onLoggedOut={() => void refresh()}
