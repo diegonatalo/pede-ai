@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/identity";
 import { error, fromResult, success, type ApiResult } from "@/lib/api/result";
 import { generateJoinCode } from "@/lib/join-code";
+import { parseMenuChange } from "@/lib/menu-editor";
 import { computeDayReport } from "@/lib/metrics";
 import { ownerStaffIdFor } from "@/lib/restaurant-template";
 import type { CallStatus, ItemStatus, StaffMember, TabStatus } from "@/types/domain";
@@ -190,6 +191,13 @@ export const getManagerReport = async (store: Store, actor: StaffActor, since: s
   const sessions = await store.listSessionsSince(since, actor);
   if (!sessions.ok) return error(sessions.error);
   return success({ since, report: computeDayReport(sessions.value, await store.getRestaurant()) });
+};
+
+/** Gerente edita o cardápio: uma mudança por requisição (ver `MenuChange`). */
+export const editMenu = async (store: Store, actor: StaffActor, body: unknown): Promise<ApiResult> => {
+  const change = parseMenuChange(body);
+  if (!change) return error("invalid_input");
+  return fromResult(await store.editMenu(change, actor));
 };
 
 export const getStaffFeed = async (store: Store, after: number): Promise<ApiResult> => {

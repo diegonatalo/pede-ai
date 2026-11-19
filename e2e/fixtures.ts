@@ -86,3 +86,25 @@ export const joinAndOpenTab = async (
   await page.getByRole("button", { name: "Abrir comanda" }).click();
   await expect(page.getByRole("searchbox", { name: "Buscar no cardápio" })).toBeVisible();
 };
+
+/**
+ * Cria uma conta e um restaurante novos e entra na tela do gerente dele pela conta.
+ * Para testes que mudam o cardápio ou o salão sem atrapalhar os que usam a demo em paralelo.
+ */
+export const openOwnRestaurant = async (page: Page) => {
+  const id = `${Date.now() % 1e8}${Math.floor(Math.random() * 1e3)}`;
+  const slug = `teste-${id}`;
+  await page.goto("/conta");
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await page.getByLabel("Seu nome").fill("Dona");
+  await page.getByLabel("E-mail").fill(`dona-${id}@exemplo.com`);
+  await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("button", { name: "Criar minha conta" }).click();
+  await page.getByLabel("Nome do restaurante").fill("Casa Teste");
+  await page.getByLabel("Endereço").fill(slug);
+  await page.getByRole("button", { name: "Criar restaurante" }).click();
+  await page.getByRole("button", { name: "Já anotei" }).click();
+  await page.getByRole("button", { name: "Abrir a tela do gerente de Casa Teste" }).click();
+  await expect(page.getByRole("heading", { level: 1, name: "Gerente · Dona" })).toBeVisible();
+  return slug;
+};

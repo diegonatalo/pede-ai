@@ -112,6 +112,12 @@ export const createMemoryRepository = (world: MemoryWorld, restaurantId: string)
       current.menuItems = upsert(current.menuItems, [structuredClone(item)]);
       push(event);
     },
+    async saveMenu(menu, event) {
+      const current = state();
+      current.categories = structuredClone(menu.categories);
+      current.menuItems = structuredClone(menu.items);
+      push(event);
+    },
 
     async findSessionId(ref) {
       for (const record of state().sessions.values()) {

@@ -5,6 +5,7 @@
 | **Sessão da mesa** | O garçom abre a mesa quando o grupo senta. Só dá para pedir com a mesa aberta e o código de 4 dígitos. |
 | **Comanda** | Cada pessoa (ou aparelho) tem a sua. O primeiro pedido de cada comanda passa pela confirmação do garçom. |
 | **Item** | Enviado → em preparo → pronto → retirado → entregue. Cada item vai para a cozinha ou para o bar. |
+| **Cardápio** | O gerente cria, edita, ordena e exclui categorias e itens (nome, descrição, preço, cozinha ou bar) na seção Cardápio, e o cliente vê na hora. Categoria só é excluída vazia, e excluir pede confirmação. Cada pedido guarda o nome e o preço do momento, então mudar o cardápio não muda contas abertas. Limite de 30 categorias e 300 itens por restaurante. |
 | **Conta do dono** | O dono do restaurante cria a conta com e-mail e senha (Better Auth; senha guardada só como hash, sessões no banco). Sem serviço externo: por enquanto não há confirmação de e-mail nem redefinição por link. |
 | **Equipe** | Cada pessoa tem o próprio PIN de 6 dígitos, criado pelo gerente na seção Equipe e mostrado uma vez só. O banco guarda só uma chave derivada do PIN (HMAC com a chave do app). Cada ação registra quem fez; quem é desativado perde o acesso na hora. O gerente pode usar qualquer tela; as outras pessoas, só a do próprio papel. A demonstração tem uma pessoa por papel com os PINs públicos 1111, 2222 e 3333. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN pessoal, e o cookie guarda quem entrou em cada tela. |

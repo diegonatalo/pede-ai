@@ -67,6 +67,37 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
       expect(errorOf(await store.setItemAvailability("nao-existe", false, "kitchen"))).toBe("not_found");
     });
 
+    it("deixa só o gerente editar o cardápio, que continua igual ao ler de novo", async () => {
+      const { store } = setup();
+      expect(errorOf(await store.editMenu({ type: "save_category", name: "Petiscos" }, "waiter"))).toBe("forbidden");
+      unwrap(await store.editMenu({ type: "save_category", name: "Petiscos" }, "manager"));
+      const before = await store.getMenu();
+      const petiscos = before.categories.at(-1);
+      expect(petiscos?.name).toBe("Petiscos");
+      const id = petiscos?.id as string;
+
+      unwrap(
+        await store.editMenu(
+          { type: "save_item", categoryId: id, name: "Batata frita", description: "Porção", priceCents: 2800, station: "kitchen" },
+          "manager",
+        ),
+      );
+      unwrap(await store.editMenu({ type: "move_category", id, direction: "up" }, "manager"));
+      unwrap(await store.editMenu({ type: "save_item", id: "chope", categoryId: id, name: "Chope", description: "", priceCents: 1300, station: "bar" }, "manager"));
+      unwrap(await store.editMenu({ type: "move_item", id: "chope", direction: "up" }, "manager"));
+      unwrap(await store.editMenu({ type: "delete_item", id: "tiramisu" }, "manager"));
+
+      const after = await store.getMenu();
+      const order = after.categories.map((category) => category.name);
+      expect(order.at(-2)).toBe("Petiscos");
+      expect(after.categories.map((category) => category.position)).toEqual(after.categories.map((_, index) => index));
+      expect(after.items.filter((item) => item.categoryId === id).map((item) => item.name)).toEqual(["Chope", "Batata frita"]);
+      expect(after.items.find((item) => item.id === "chope")?.priceCents).toBe(1300);
+      expect(after.items.some((item) => item.id === "tiramisu")).toBe(false);
+      expect(errorOf(await store.editMenu({ type: "delete_category", id }, "manager"))).toBe("category_not_empty");
+      expect((await store.getEvents(0)).events.filter((event) => event.type === "menu_updated")).toHaveLength(6);
+    });
+
     it("deixa só o gerente mudar taxa e couvert, dentro dos limites", async () => {
       const { store } = setup();
       expect(errorOf(await store.updateRestaurant({ serviceFeePercent: 12 }, "waiter"))).toBe("forbidden");

@@ -11,4 +11,5 @@
 - [x] Fase 2, etapa 1a: conta do dono com e-mail e senha.
 - [x] Fase 2, etapa 1b: equipe com PIN pessoal e registro de quem fez cada ação.
 - [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta e limpeza diária da demonstração.
-- [ ] Fase 2: cardápio, fotos e mesas editáveis, tempo real, LGPD, Pix, notificações e nota fiscal.
+- [x] Fase 2, etapa 3: cardápio editável pelo gerente.
+- [ ] Fase 2: fotos e mesas editáveis, tempo real, LGPD, Pix, notificações e nota fiscal.
