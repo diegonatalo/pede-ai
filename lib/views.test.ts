@@ -15,6 +15,7 @@ const item = (id: string, orderId: string, tabIds: string[]): OrderItem => ({
   status: "sent",
   shares: tabIds.map((tabId) => ({ tabId, parts: 1 })),
   updatedAt: "2026-11-18T20:00:00.000Z",
+  timeline: {},
 });
 
 const tab = (id: string, customerName: string) => ({

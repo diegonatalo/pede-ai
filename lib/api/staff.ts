@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/identity";
 import { error, fromResult, success, type ApiResult } from "@/lib/api/result";
 import { generateJoinCode } from "@/lib/join-code";
+import { computeDayReport } from "@/lib/metrics";
 import type { CallStatus, ItemStatus, TabStatus } from "@/types/domain";
 import type { RestaurantSettings, Store } from "@/types/store";
 
@@ -165,6 +166,14 @@ export const updateSettings = async (store: Store, role: StaffRole, body: unknow
   if ("requireFirstOrderApproval" in body)
     settings.requireFirstOrderApproval = body.requireFirstOrderApproval as boolean;
   return fromResult(await store.updateRestaurant(settings, role));
+};
+
+/** Números do dia para o gerente. `since` é o início do dia no fuso de quem pede. */
+export const getManagerReport = async (store: Store, role: StaffRole, since: string | null): Promise<ApiResult> => {
+  if (!since) return error("invalid_input");
+  const sessions = await store.listSessionsSince(since, role);
+  if (!sessions.ok) return error(sessions.error);
+  return success({ since, report: computeDayReport(sessions.value, await store.getRestaurant()) });
 };
 
 export const getStaffFeed = async (store: Store, after: number): Promise<ApiResult> => {

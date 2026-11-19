@@ -286,6 +286,49 @@ describe("itens", () => {
   });
 });
 
+describe("linha do tempo e relatório", () => {
+  it("guarda quando o item entrou em cada estado", async () => {
+    const { store, couple, advance } = await openTable();
+    const { items } = unwrap(
+      await store.placeOrder({ tabId: couple.id, lines: [{ menuItemId: "risoto", quantity: 1 }] }, "customer"),
+    );
+    expect(Object.keys(items[0].timeline)).toEqual(["awaiting_approval"]);
+    advance(1);
+    unwrap(await store.approveTab(couple.id, "waiter"));
+    advance(2);
+    unwrap(await store.setItemStatus(items[0].id, "preparing", "kitchen"));
+    advance(12);
+    const ready = unwrap(await store.setItemStatus(items[0].id, "ready", "kitchen"));
+    expect(ready.timeline).toEqual({
+      awaiting_approval: "2026-11-18T20:00:00.000Z",
+      sent: "2026-11-18T20:01:00.000Z",
+      preparing: "2026-11-18T20:03:00.000Z",
+      ready: "2026-11-18T20:15:00.000Z",
+    });
+  });
+
+  it("lista para o gerente as mesas abertas e as fechadas desde o início do dia", async () => {
+    const { store, session, couple, friend, advance } = await openTable();
+    unwrap(await store.setTabStatus(couple.id, "paid", "waiter"));
+    unwrap(await store.setTabStatus(friend.id, "paid", "waiter"));
+    unwrap(await store.closeSession(session.id, "waiter"));
+    advance(60);
+    unwrap(await store.openSession("mesa-1", "1111", "waiter"));
+
+    const today = unwrap(await store.listSessionsSince("2026-11-18T03:00:00.000Z", "manager"));
+    expect(today.map((entry) => [entry.table.id, entry.session.status])).toEqual([
+      ["mesa-3", "closed"],
+      ["mesa-1", "open"],
+    ]);
+    // A mesa fechada antes do período fica de fora; a aberta aparece sempre.
+    const later = unwrap(await store.listSessionsSince("2026-11-18T20:30:00.000Z", "manager"));
+    expect(later.map((entry) => entry.table.id)).toEqual(["mesa-1"]);
+
+    expect(errorOf(await store.listSessionsSince("2026-11-18T03:00:00.000Z", "waiter"))).toBe("forbidden");
+    expect(errorOf(await store.listSessionsSince("ontem", "manager"))).toBe("invalid_input");
+  });
+});
+
 describe("chamados", () => {
   it("cria e resolve um chamado da comanda", async () => {
     const { store, session, couple } = await openTable();

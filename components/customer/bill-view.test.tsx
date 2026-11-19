@@ -28,6 +28,7 @@ const item = (id: string, name: string, orderId: string, price: number, shares: 
   status,
   shares: shares.map((tabId) => ({ tabId, parts: 1 })),
   updatedAt: AT,
+  timeline: {},
 });
 
 const view = (status: CustomerTab["status"] = "open"): CustomerView => ({

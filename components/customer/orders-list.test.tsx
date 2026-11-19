@@ -17,6 +17,7 @@ const item = (id: string, nameSnapshot: string, status: ItemStatus): OrderItem =
   status,
   shares: [{ tabId: "t1", parts: 1 }],
   updatedAt: "2026-11-18T20:00:00.000Z",
+  timeline: {},
 });
 
 const view = (items: OrderItem[]): CustomerView => ({

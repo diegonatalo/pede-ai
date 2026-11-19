@@ -25,6 +25,7 @@ const makeItem = (
   status: overrides.status ?? "delivered",
   shares,
   updatedAt: "2026-11-18T20:00:00.000Z",
+  timeline: {},
 });
 
 const only = (tabId: string): ItemShare[] => [{ tabId, parts: 1 }];

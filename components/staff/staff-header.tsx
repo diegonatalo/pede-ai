@@ -9,8 +9,9 @@ import { cn } from "@/lib/cn";
 type Props = {
   role: StaffRole;
   restaurantName: string;
-  soundOn: boolean;
-  onToggleSound: () => void;
+  /** Sem `onToggleSound`, o botão de som não aparece (tela sem avisos sonoros). */
+  soundOn?: boolean;
+  onToggleSound?: () => void;
   onLoggedOut: () => void;
 };
 
@@ -28,14 +29,16 @@ export const StaffHeader = ({ role, restaurantName, soundOn, onToggleSound, onLo
           <h1 className="text-lg font-bold">{ROLE_LABEL[role]}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm", soundOn && "border-accent text-accent")}
-            aria-pressed={soundOn}
-            onClick={onToggleSound}
-          >
-            {soundOn ? "Som ligado" : "Ligar som"}
-          </button>
+          {onToggleSound && (
+            <button
+              type="button"
+              className={cn(BUTTON.secondary, "min-h-10 px-4 text-sm", soundOn && "border-accent text-accent")}
+              aria-pressed={soundOn}
+              onClick={onToggleSound}
+            >
+              {soundOn ? "Som ligado" : "Ligar som"}
+            </button>
+          )}
           <button type="button" className={cn(BUTTON.ghost, "min-h-10 px-4 text-sm")} onClick={() => void logout()}>
             Sair
           </button>

@@ -120,6 +120,8 @@ export type OrderItem = {
   status: ItemStatus;
   shares: ItemShare[];
   updatedAt: IsoDateTime;
+  /** Quando o item entrou em cada estado (o último vale, se voltou atrás). Base dos tempos médios. */
+  timeline: Partial<Record<ItemStatus, IsoDateTime>>;
 };
 
 export type CallReason = "question" | "bill" | "other";

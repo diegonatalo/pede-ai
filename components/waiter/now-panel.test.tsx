@@ -29,6 +29,7 @@ const item = (id: string, name: string, tabId: string, status: ItemStatus): Orde
   status,
   shares: [{ tabId, parts: 1 }],
   updatedAt: AT,
+  timeline: {},
 });
 
 const calls: WaiterCall[] = [

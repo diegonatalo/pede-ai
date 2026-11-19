@@ -206,6 +206,17 @@ export const createMemoryStore = ({
       );
     },
 
+    async listSessionsSince(since, actor) {
+      if (actor !== "manager") return fail("forbidden");
+      const sinceMs = Date.parse(since);
+      if (Number.isNaN(sinceMs)) return fail("invalid_input");
+      return ok(
+        [...sessions.values()]
+          .filter((session) => session.status === "open" || Date.parse(session.openedAt) >= sinceMs)
+          .map(snapshot),
+      );
+    },
+
     async closeSession(sessionId, actor) {
       if (!can(actor, STAFF)) return fail("forbidden");
       const session = sessions.get(sessionId);
@@ -255,7 +266,7 @@ export const createMemoryStore = ({
       );
       for (const item of items.values()) {
         if (tabOrderIds.has(item.orderId) && item.status === "awaiting_approval") {
-          items.set(item.id, { ...item, status: "sent", updatedAt: at });
+          items.set(item.id, { ...item, status: "sent", updatedAt: at, timeline: { ...item.timeline, sent: at } });
         }
       }
       record("tab_approved", actor, tabId, tab.sessionId);
@@ -309,6 +320,7 @@ export const createMemoryStore = ({
         status,
         shares: [{ tabId: tab.id, parts: 1 }],
         updatedAt: at,
+        timeline: { [status]: at },
       }));
       orders.set(order.id, order);
       for (const item of created) items.set(item.id, item);
@@ -323,7 +335,8 @@ export const createMemoryStore = ({
       if (session?.status !== "open") return fail("session_closed");
       const check = checkItemTransition(item.status, to, actor);
       if (!check.ok) return fail(check.error);
-      const updated: OrderItem = { ...item, status: to, updatedAt: iso() };
+      const at = iso();
+      const updated: OrderItem = { ...item, status: to, updatedAt: at, timeline: { ...item.timeline, [to]: at } };
       items.set(itemId, updated);
       record("item_status_changed", actor, itemId, session.id);
       return ok(updated);

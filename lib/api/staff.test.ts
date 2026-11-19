@@ -6,6 +6,7 @@ import {
   approveTab,
   closeTable,
   createStaffTab,
+  getManagerReport,
   getStaffFeed,
   getStaffOverview,
   openTable,
@@ -144,6 +145,21 @@ describe("cardápio, configuração e feed", () => {
     expect(errorOf(await updateSettings(store, "manager", { serviceFeePercent: "12" }))).toBe("invalid_input");
     const updated = await updateSettings(store, "manager", { serviceFeePercent: 12, requireFirstOrderApproval: false });
     expect(updated.body).toMatchObject({ serviceFeePercent: 12, requireFirstOrderApproval: false });
+  });
+
+  it("monta o relatório do dia só para o gerente", async () => {
+    const store = createMemoryStore();
+    const { session } = (await openTable(store, "waiter", { tableId: "mesa-4" })).body as { session: TableSession };
+    const tab = (await createStaffTab(store, "waiter", { sessionId: session.id, customerName: "Ana", peopleCount: 2 }))
+      .body as Tab;
+    await placeStaffOrder(store, "waiter", { tabId: tab.id, lines: [{ menuItemId: "chope", quantity: 2 }] });
+    await setStaffTabStatus(store, "waiter", tab.id, { to: "paid" });
+
+    const since = "2000-01-01T00:00:00.000Z";
+    const result = await getManagerReport(store, "manager", since);
+    expect(result.body).toMatchObject({ since, report: { revenueCents: 2860, paidTabs: 1, peopleServed: 2, itemsSold: 2 } });
+    expect(errorOf(await getManagerReport(store, "waiter", since))).toBe("forbidden");
+    expect(errorOf(await getManagerReport(store, "manager", null))).toBe("invalid_input");
   });
 
   it("avisa quando algo mudou em qualquer mesa", async () => {
