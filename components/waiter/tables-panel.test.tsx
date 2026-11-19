@@ -52,6 +52,13 @@ describe("TablesPanel", () => {
     expect(run).toHaveBeenCalledWith("mesa-2", "/api/staff/sessions", { tableId: "mesa-2" });
   });
 
+  it("mostra se a mesa está livre ou ocupada, sem a quantidade de lugares (que muda no dia a dia)", () => {
+    render(<TablesPanel board={board([ana("open")])} busy={null} run={vi.fn()} />);
+    expect(screen.getByText("Ocupada")).toBeInTheDocument();
+    expect(screen.getByText("Livre")).toBeInTheDocument();
+    expect(screen.queryByText(/lugares/)).not.toBeInTheDocument();
+  });
+
   it("mostra o código, a comanda com o total e recebe", async () => {
     const run = vi.fn();
     render(<TablesPanel board={board([ana("bill_requested")])} busy={null} run={run} />);

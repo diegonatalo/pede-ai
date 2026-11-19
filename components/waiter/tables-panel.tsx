@@ -31,7 +31,7 @@ export const TablesPanel = ({ board, busy, run }: Props) => (
             <div>
               <h3 className="text-lg font-bold">{table.label}</h3>
               <p className="text-sm text-muted">
-                {table.seats} lugares · {session ? "Ocupada" : "Livre"}
+                {session ? "Ocupada" : "Livre"}
                 {summary.billRequested && " · pediram a conta"}
               </p>
             </div>
