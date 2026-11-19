@@ -97,9 +97,9 @@ export const LandingPage = () => (
           <Link href="/conta" className={BUTTON.primaryLarge}>
             Criar conta grátis
           </Link>
-          <Link href="/demo" className={ON_PHOTO}>
-            Ver a demonstração
-          </Link>
+          <a href="#como-funciona" className={ON_PHOTO}>
+            Ver como funciona
+          </a>
         </div>
         <p className="text-sm text-white/70">Sem cartão de crédito e sem app para instalar.</p>
       </div>
@@ -117,7 +117,7 @@ export const LandingPage = () => (
         </ul>
       </section>
 
-      <section aria-labelledby="titulo-como-funciona" className="mx-auto w-full max-w-6xl px-6 py-20">
+      <section id="como-funciona" aria-labelledby="titulo-como-funciona" className="mx-auto w-full max-w-6xl scroll-mt-6 px-6 py-20">
         <p className="text-sm font-semibold tracking-widest text-accent uppercase">Como funciona</p>
         <h2 id="titulo-como-funciona" className="mt-2 max-w-2xl text-3xl font-bold tracking-tight text-balance sm:text-4xl">
           Do QR code à conta paga, todo mundo na mesma página
@@ -188,8 +188,8 @@ export const LandingPage = () => (
             Teste com o seu restaurante hoje
           </h2>
           <p className="max-w-2xl text-lg opacity-90">
-            O restaurante já nasce com um salão e um cardápio de exemplo. Troque pelo seu, imprima os QR codes e chame a
-            equipe. Prefere só olhar antes? A demonstração está aberta, com PINs públicos.
+            Crie a conta, cadastre o restaurante e ele já nasce com um salão e um cardápio de exemplo. Troque pelo seu,
+            imprima os QR codes e chame a equipe.
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
@@ -199,10 +199,10 @@ export const LandingPage = () => (
               Criar conta grátis
             </Link>
             <Link
-              href="/demo"
+              href="/conta"
               className="inline-flex min-h-12 items-center justify-center rounded-full border border-current px-6 font-semibold hover:bg-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-accent"
             >
-              Ver a demonstração
+              Já tenho conta
             </Link>
           </div>
         </div>

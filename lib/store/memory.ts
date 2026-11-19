@@ -1,4 +1,5 @@
-import { demoRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
+import { sampleRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
+import { RESTAURANT } from "@/lib/seed-data";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import { createStore, type EngineOptions } from "@/lib/store/engine";
 import type { MapSpot, MenuCategory, MenuItem, Restaurant, StaffMember, Table } from "@/types/domain";
@@ -67,10 +68,20 @@ const stateFrom = (data: RestaurantData, pinKey: StaffPinKey): RestaurantState =
   guard: { failedAttempts: 0 },
 });
 
-/** Mundo novo, só com o restaurante de demonstração. */
-export const createMemoryWorld = ({ pinKey = defaultStaffPinKey() }: { pinKey?: StaffPinKey } = {}): MemoryWorld => {
-  const demo = demoRestaurantData();
-  return { restaurants: new Map([[demo.restaurant.id, stateFrom(demo, pinKey)]]), pinKey };
+/**
+ * Mundo novo e vazio: os restaurantes nascem pelo cadastro da conta. Com `sample`, já vem o
+ * restaurante de exemplo com ids fixos (base dos testes).
+ */
+export const createMemoryWorld = ({
+  pinKey = defaultStaffPinKey(),
+  sample = false,
+}: { pinKey?: StaffPinKey; sample?: boolean } = {}): MemoryWorld => {
+  const restaurants = new Map<string, RestaurantState>();
+  if (sample) {
+    const data = sampleRestaurantData();
+    restaurants.set(data.restaurant.id, stateFrom(data, pinKey));
+  }
+  return { restaurants, pinKey };
 };
 
 /**
@@ -249,13 +260,9 @@ export const createMemoryRegistry = (world: MemoryWorld): RestaurantRegistry => 
       world.restaurants.set(data.restaurant.id, stateFrom(data, world.pinKey));
       return true;
     },
-    async resetDemo() {
-      const demo = demoRestaurantData();
-      world.restaurants.set(demo.restaurant.id, stateFrom(demo, world.pinKey));
-    },
   };
 };
 
-/** Store completo do restaurante de demonstração num mundo novo (testes). */
+/** Store do restaurante de exemplo num mundo novo (testes). */
 export const createMemoryStore = (options: EngineOptions = {}): Store =>
-  createStore(createMemoryRepository(createMemoryWorld({ pinKey: options.pinKey }), "demo"), options);
+  createStore(createMemoryRepository(createMemoryWorld({ pinKey: options.pinKey, sample: true }), RESTAURANT.id), options);

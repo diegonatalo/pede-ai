@@ -13,7 +13,6 @@ import { error, type ApiResult } from "@/lib/api/result";
 import { resolveStaffActor } from "@/lib/api/staff";
 import { getAuth } from "@/lib/auth/server";
 import { signToken, verifyToken } from "@/lib/signed-token";
-import { RESTAURANT } from "@/lib/seed-data";
 import { getRegistry, getStore } from "@/lib/store";
 import type { Store } from "@/types/store";
 
@@ -82,9 +81,10 @@ export type RequestRestaurant = { id: string; store: Store };
 // Endereço → id. O endereço de um restaurante não muda, então fica guardado no processo.
 const slugs = globalThis as typeof globalThis & { __pedeAiSlugs?: Map<string, string> };
 
-/** Restaurante pedido em `?r=<slug>`; sem o parâmetro, a demonstração. `null` se não existe. */
+/** Restaurante pedido em `?r=<slug>`. `null` sem o parâmetro ou se ele não existe. */
 export const resolveRestaurant = async (request: NextRequest): Promise<RequestRestaurant | null> => {
-  const slug = request.nextUrl.searchParams.get("r") || RESTAURANT.slug;
+  const slug = request.nextUrl.searchParams.get("r");
+  if (!slug) return null;
   slugs.__pedeAiSlugs ??= new Map();
   let id = slugs.__pedeAiSlugs.get(slug);
   if (!id) {

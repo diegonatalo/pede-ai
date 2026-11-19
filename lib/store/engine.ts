@@ -466,7 +466,7 @@ export const createStore = (
       if (typeof active !== "boolean") return fail("invalid_input");
       const member = (await repo.listStaff()).find((entry) => entry.id === staffId);
       if (!member) return fail("not_found");
-      // Pessoas da demonstração não podem ser desativadas: a demo pública quebraria para todo mundo.
+      // Pessoas fixas do sistema (as do restaurante de exemplo) não podem ser desativadas.
       if (member.system) return fail("forbidden");
       // Quem está usando a tela não desativa a si mesmo (ficaria sem acesso no meio do trabalho).
       if (!active && staffIdOf(actor) === staffId) return fail("forbidden");

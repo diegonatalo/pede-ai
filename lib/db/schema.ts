@@ -12,7 +12,7 @@ export const restaurants = pgTable("restaurants", {
   id: text("id").primaryKey(),
   /** Endereço do restaurante (`/r/<slug>`), único. */
   slug: text("slug").notNull().unique(),
-  /** Conta (Better Auth) dona do restaurante; nulo no restaurante de demonstração. */
+  /** Conta (Better Auth) dona do restaurante; nulo só no restaurante de exemplo dos testes. */
   ownerUserId: text("owner_user_id"),
   name: text("name").notNull(),
   serviceFeePercent: integer("service_fee_percent").notNull(),

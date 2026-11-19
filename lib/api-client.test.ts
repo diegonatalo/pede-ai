@@ -49,8 +49,8 @@ describe("apiRequest", () => {
 });
 
 describe("withRestaurant", () => {
-  it("deixa a demonstração sem parâmetro", () => {
-    expect(withRestaurant("/api/menu", "demo")).toBe("/api/menu");
+  it("sem restaurante, deixa o caminho como está", () => {
+    expect(withRestaurant("/api/menu", "")).toBe("/api/menu");
   });
 
   it("leva o restaurante em ?r=, junto dos outros parâmetros", () => {

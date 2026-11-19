@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { demoRestaurantData, isValidSlug, newRestaurantData, slugify } from "@/lib/restaurant-template";
+import { sampleRestaurantData, isValidSlug, newRestaurantData, slugify } from "@/lib/restaurant-template";
 
 describe("slug", () => {
   it("sugere o endereço a partir do nome", () => {
@@ -31,7 +31,7 @@ describe("newRestaurantData", () => {
     createdAt: "2026-11-19T00:00:00.000Z",
     newId: () => `novo-${++counter}`,
   });
-  const demo = demoRestaurantData();
+  const demo = sampleRestaurantData();
 
   it("copia o salão e o cardápio de exemplo com ids novos, todos do restaurante novo", () => {
     expect(data.restaurant).toMatchObject({ id: "r2", slug: "cantina-do-ze", name: "Cantina do Zé" });

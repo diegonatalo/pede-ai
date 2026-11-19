@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { QrSheet } from "@/components/manager/qr-sheet";
+import { RestaurantContext } from "@/hooks/use-restaurant";
 import { TABLES } from "@/lib/seed-data";
 
 afterEach(() => {
@@ -10,12 +11,16 @@ afterEach(() => {
 
 describe("QrSheet", () => {
   it("gera um QR por mesa com o link da tela do cliente", async () => {
-    render(<QrSheet tables={TABLES.slice(0, 3)} />);
+    render(
+      <RestaurantContext value="cantina">
+        <QrSheet tables={TABLES.slice(0, 3)} />
+      </RestaurantContext>,
+    );
     const codes = await screen.findAllByRole("img", { name: /QR code da Mesa/ });
     expect(codes).toHaveLength(3);
     expect(codes[0].innerHTML.startsWith("<svg")).toBe(true);
     expect(screen.getByRole("heading", { name: "Mesa 2" })).toBeInTheDocument();
-    expect(screen.getByText(`${window.location.origin}/r/demo/mesa/mesa-1`)).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/r/cantina/mesa/mesa-1`)).toBeInTheDocument();
   });
 
   it("avisa quando os links apontam para o computador local", async () => {

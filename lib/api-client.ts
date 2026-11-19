@@ -13,12 +13,9 @@ export type RequestOptions = { method?: "GET" | "POST" | "PATCH"; body?: unknown
 /** Chamada à API já presa a um restaurante (ver `useApi`). */
 export type Api = <T>(path: string, options?: RequestOptions) => Promise<ApiResponse<T>>;
 
-/**
- * Leva o restaurante para a API em `?r=<slug>`. A demonstração é o padrão da API e fica sem o
- * parâmetro, então os endereços antigos continuam iguais.
- */
-export const withRestaurant = (path: string, slug: string, demoSlug = "demo") => {
-  if (slug === demoSlug) return path;
+/** Leva o restaurante para a API em `?r=<slug>` (sem restaurante, o caminho fica como está). */
+export const withRestaurant = (path: string, slug: string) => {
+  if (!slug) return path;
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}r=${encodeURIComponent(slug)}`;
 };

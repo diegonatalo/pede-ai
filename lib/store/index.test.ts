@@ -24,16 +24,16 @@ describe("storeKind", () => {
 
 describe("getStore", () => {
   it("devolve sempre o mesmo store para o mesmo restaurante", () => {
-    expect(getStore()).toBe(getStore("demo"));
+    expect(getStore("demo")).toBe(getStore("demo"));
   });
 
   it("troca o mundo em memória quando o motor ganhou métodos novos (next dev)", () => {
-    const old: Partial<Store> = { ...getStore() };
+    const old: Partial<Store> = { ...getStore("demo") };
     delete old.listSessionsSince;
     holder.__pedeAiStores = new Map([["demo", old as Store]]);
-    const after = getStore();
+    const after = getStore("demo");
     expect(after).not.toBe(old);
     expect(typeof after.listSessionsSince).toBe("function");
-    expect(getStore()).toBe(after);
+    expect(getStore("demo")).toBe(after);
   });
 });

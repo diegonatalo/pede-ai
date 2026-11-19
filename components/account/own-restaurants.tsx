@@ -123,7 +123,7 @@ export const OwnRestaurants = () => {
             {state.restaurants.length === 0 ? "Cadastre o seu restaurante" : "Cadastrar outro restaurante"}
           </h2>
           <p className="text-sm text-muted">
-            Ele começa com o salão e o cardápio de exemplo da demonstração, para você testar tudo. A edição do cardápio
+            Ele começa com um salão e um cardápio de exemplo, para você testar tudo. A edição do cardápio
             e das mesas chega nas próximas versões.
           </p>
           <CreateRestaurantForm

@@ -3,8 +3,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
-import { demoRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
-import { RESTAURANT } from "@/lib/seed-data";
+import type { RestaurantData } from "@/lib/restaurant-template";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
   MapSpot,
@@ -213,38 +212,6 @@ const restaurantRows = (db: Db, data: RestaurantData, pinKey: StaffPinKey) => ({
     .values(data.staff.map(({ pin, ...member }) => ({ ...member, pinKey: pinKey(member.restaurantId, pin) }))),
 });
 
-/**
- * Grava o restaurante de demonstração na primeira vez (sem mexer no que já existe). A equipe da demo
- * é regravada sempre, para a chave do PIN acompanhar a chave do app se ela mudar.
- */
-const seedDemo = async (db: Db, pinKey: StaffPinKey) => {
-  const rows = restaurantRows(db, demoRestaurantData(), pinKey);
-  await db.batch([
-    rows.restaurant.onConflictDoNothing(),
-    rows.tables.onConflictDoNothing(),
-    rows.spots.onConflictDoNothing(),
-    rows.categories.onConflictDoNothing(),
-    rows.items.onConflictDoNothing(),
-    rows.staff.onConflictDoUpdate({
-      target: staffMembers.id,
-      set: { pinKey: sql.raw('excluded."pin_key"'), active: true, system: true },
-    }),
-  ]);
-};
-
-/** Uma gravação da demo por conexão, compartilhada pelo cadastro e pelos repositórios. */
-const seededFor = new WeakMap<Db, Promise<void>>();
-const ensureSeeded = (db: Db, pinKey: StaffPinKey) => {
-  let seeded = seededFor.get(db);
-  if (!seeded) {
-    seeded = seedDemo(db, pinKey).catch((error: unknown) => {
-      seededFor.delete(db);
-      throw error;
-    });
-    seededFor.set(db, seeded);
-  }
-  return seeded;
-};
 
 /**
  * Repositório no Postgres (Neon, pelo driver HTTP). Cada operação é uma requisição só:
@@ -252,14 +219,9 @@ const ensureSeeded = (db: Db, pinKey: StaffPinKey) => {
  */
 export const createPostgresRepository = (
   url: string,
-  {
-    restaurantId = RESTAURANT.id,
-    pinKey = defaultStaffPinKey(),
-    db: shared,
-  }: { restaurantId?: string; pinKey?: StaffPinKey; db?: Db } = {},
+  { restaurantId, db: shared }: { restaurantId: string; db?: Db },
 ): Repository => {
   const db: Db = shared ?? drizzle(url, { schema });
-  const ready = () => ensureSeeded(db, pinKey);
   /** Sessões deste restaurante: toda consulta por comanda, item ou chamado passa por aqui. */
   const ownSessions = () =>
     db.select({ id: tableSessions.id }).from(tableSessions).where(eq(tableSessions.restaurantId, restaurantId));
@@ -292,13 +254,11 @@ export const createPostgresRepository = (
 
   return {
     async getRestaurant() {
-      await ready();
       const [row] = await db.select().from(restaurants).where(eq(restaurants.id, restaurantId));
       return toRestaurant(row);
     },
 
     async saveRestaurant(restaurant, event) {
-      await ready();
       await db.batch([
         db.update(restaurants).set(restaurant).where(eq(restaurants.id, restaurantId)),
         db.insert(events).values(eventRow(event, restaurantId)),
@@ -306,7 +266,6 @@ export const createPostgresRepository = (
     },
 
     async listTables() {
-      await ready();
       tablesCache ??= (
         await db
           .select()
@@ -318,7 +277,6 @@ export const createPostgresRepository = (
     },
 
     async listMapSpots() {
-      await ready();
       spotsCache ??= (
         await db.select().from(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)).orderBy(asc(mapSpots.position))
       ).map(toSpot);
@@ -326,7 +284,6 @@ export const createPostgresRepository = (
     },
 
     async getMenu() {
-      await ready();
       const [categories, items] = await db.batch([
         db
           .select()
@@ -339,7 +296,6 @@ export const createPostgresRepository = (
     },
 
     async saveMenuItem(item, event) {
-      await ready();
       const { id, ...fields } = item;
       await db.batch([
         db.update(menuItems).set(fields).where(and(eq(menuItems.id, id), eq(menuItems.restaurantId, restaurantId))),
@@ -348,7 +304,6 @@ export const createPostgresRepository = (
     },
 
     async saveMenu(menu, event) {
-      await ready();
       const ownCategory = eq(menuCategories.restaurantId, restaurantId);
       const ownItem = eq(menuItems.restaurantId, restaurantId);
       const categoryIds = menu.categories.map((category) => category.id);
@@ -382,7 +337,6 @@ export const createPostgresRepository = (
     },
 
     async findSessionId(ref) {
-      await ready();
       const [row] =
         "openAtTable" in ref
           ? await db
@@ -413,20 +367,17 @@ export const createPostgresRepository = (
     },
 
     async loadSession(sessionId) {
-      await ready();
       const [record] = await loadRecords(eq(tableSessions.id, sessionId));
       return record ?? null;
     },
 
     async listSessions({ since }) {
-      await ready();
       const open = eq(tableSessions.status, "open");
       // Datas em ISO UTC comparam certo como texto.
       return loadRecords(since ? (or(open, gte(tableSessions.openedAt, since)) as SQL) : open);
     },
 
     async insertSession({ session, secret }, event) {
-      await ready();
       try {
         await db.batch([
           db.insert(tableSessions).values({
@@ -448,7 +399,6 @@ export const createPostgresRepository = (
     },
 
     async saveSession(sessionId, expectedVersion, changes, event) {
-      await ready();
       const queries: BatchItem<"pg">[] = [
         db.execute(sql`select pede_ai_bump_session_version(${sessionId}, ${expectedVersion})`),
       ];
@@ -504,7 +454,6 @@ export const createPostgresRepository = (
     },
 
     async getEvents(afterSeq, sessionId) {
-      await ready();
       const own = eq(events.restaurantId, restaurantId);
       const filter =
         sessionId === undefined
@@ -518,7 +467,6 @@ export const createPostgresRepository = (
     },
 
     async listStaff() {
-      await ready();
       const rows = await db
         .select()
         .from(staffMembers)
@@ -528,7 +476,6 @@ export const createPostgresRepository = (
     },
 
     async findStaffByPinKey(key) {
-      await ready();
       const [row] = await db
         .select()
         .from(staffMembers)
@@ -537,7 +484,6 @@ export const createPostgresRepository = (
     },
 
     async findStaffById(staffId) {
-      await ready();
       const [row] = await db
         .select()
         .from(staffMembers)
@@ -546,7 +492,6 @@ export const createPostgresRepository = (
     },
 
     async insertStaff(member, key, event) {
-      await ready();
       try {
         await db.batch([
           db.insert(staffMembers).values({ ...member, pinKey: key }),
@@ -561,7 +506,6 @@ export const createPostgresRepository = (
     },
 
     async updateStaff(member, key, event) {
-      await ready();
       try {
         await db.batch([
           db
@@ -578,7 +522,6 @@ export const createPostgresRepository = (
     },
 
     async getStaffGuard() {
-      await ready();
       const [row] = await db
         .select({ failedAttempts: restaurants.staffFailedAttempts, lockedUntil: restaurants.staffLockedUntil })
         .from(restaurants)
@@ -590,7 +533,6 @@ export const createPostgresRepository = (
     },
 
     async saveStaffGuard(guard) {
-      await ready();
       await db
         .update(restaurants)
         .set({ staffFailedAttempts: guard.failedAttempts, staffLockedUntil: guard.lockedUntil ?? null })
@@ -612,20 +554,16 @@ export const createPostgresRegistry = (
   { pinKey = defaultStaffPinKey(), db: shared }: { pinKey?: StaffPinKey; db?: Db } = {},
 ): RestaurantRegistry => {
   const db: Db = shared ?? drizzle(url, { schema });
-  const ready = () => ensureSeeded(db, pinKey);
   return {
     async findBySlug(slug) {
-      await ready();
       const [row] = await db.select().from(restaurants).where(eq(restaurants.slug, slug));
       return row ? toRecord(row) : null;
     },
     async listByOwner(ownerUserId) {
-      await ready();
       const rows = await db.select().from(restaurants).where(eq(restaurants.ownerUserId, ownerUserId));
       return rows.map(toRecord);
     },
     async create(data) {
-      await ready();
       const rows = restaurantRows(db, data, pinKey);
       try {
         await db.batch([rows.restaurant, rows.tables, rows.spots, rows.categories, rows.items, rows.staff]);
@@ -635,34 +573,6 @@ export const createPostgresRegistry = (
         if (pgError(error).code === "23505") return false;
         throw error;
       }
-    },
-    async resetDemo() {
-      await ready();
-      const demoId = RESTAURANT.id;
-      const demoSessions = db
-        .select({ id: tableSessions.id })
-        .from(tableSessions)
-        .where(eq(tableSessions.restaurantId, demoId));
-      const rows = restaurantRows(db, demoRestaurantData(), pinKey);
-      await db.batch([
-        db.delete(orderItems).where(inArray(orderItems.sessionId, demoSessions)),
-        db.delete(orders).where(inArray(orders.sessionId, demoSessions)),
-        db.delete(waiterCalls).where(inArray(waiterCalls.sessionId, demoSessions)),
-        db.delete(tabs).where(inArray(tabs.sessionId, demoSessions)),
-        db.delete(tableSessions).where(eq(tableSessions.restaurantId, demoId)),
-        db.delete(events).where(eq(events.restaurantId, demoId)),
-        db.delete(staffMembers).where(and(eq(staffMembers.restaurantId, demoId), eq(staffMembers.system, false))),
-        // Configuração e cardápio de volta ao começo (e o bloqueio de PIN zerado).
-        rows.restaurant.onConflictDoUpdate({
-          target: restaurants.id,
-          set: { ...replaceAll(restaurants, ["id"]), staffFailedAttempts: 0, staffLockedUntil: null },
-        }),
-        rows.items.onConflictDoUpdate({ target: menuItems.id, set: replaceAll(menuItems) }),
-        rows.staff.onConflictDoUpdate({
-          target: staffMembers.id,
-          set: { pinKey: sql.raw('excluded."pin_key"'), name: sql.raw('excluded."name"'), active: true, system: true },
-        }),
-      ]);
     },
   };
 };

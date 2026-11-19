@@ -12,8 +12,8 @@ const inRestaurant = (slug: string) =>
   };
 
 describe("useRestaurantSlug", () => {
-  it("é a demonstração fora de /r/<slug>", () => {
-    expect(renderHook(() => useRestaurantSlug()).result.current).toBe("demo");
+  it("fica vazio fora de /r/<slug>", () => {
+    expect(renderHook(() => useRestaurantSlug()).result.current).toBe("");
   });
 });
 

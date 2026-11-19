@@ -131,38 +131,6 @@ export const describeIsolationContract = (makeWorld: () => TenantWorld) => {
       );
     });
 
-    it("limpar a demonstração não mexe no outro restaurante", async () => {
-      const { world, a, b, session } = await setup();
-      const [tableB] = await b.listTables();
-      const sessionB = unwrap(await b.openSession(tableB.id, "4321", "manager"));
-      const manager = { role: "manager" as const, staffId: "staff-demo-manager" };
-      unwrap(await a.createStaff({ name: "Visitante", role: "waiter" }, manager));
-      unwrap(await a.updateRestaurant({ serviceFeePercent: 15 }, "manager"));
-      unwrap(await a.setItemAvailability("chope", false, "manager"));
-      await a.verifyStaffPin("000000");
-
-      await world.registry.resetDemo();
-
-      expect(await a.listOpenSessions()).toEqual([]);
-      expect(errorOf(await a.getSessionSnapshot(session.id))).toBe("not_found");
-      expect((await a.getEvents(0)).events).toEqual([]);
-      expect(unwrap(await a.listStaff("manager")).map((member) => member.id).sort()).toEqual([
-        "staff-demo-kitchen",
-        "staff-demo-manager",
-        "staff-demo-waiter",
-      ]);
-      expect((await a.getRestaurant()).serviceFeePercent).toBe(10);
-      expect((await a.getMenu()).items.find((item) => item.id === "chope")?.available).toBe(true);
-      expect(unwrap(await a.verifyStaffPin("2222")).id).toBe("staff-demo-waiter");
-      // A demo continua funcionando depois da limpeza.
-      unwrap(await a.openSession("mesa-3", "1234", "waiter"));
-
-      expect((await b.listOpenSessions()).map((entry) => entry.session.id)).toEqual([sessionB.id]);
-      expect((await b.getEvents(0)).events.length).toBe(1);
-      expect(unwrap(await b.listStaff("manager")).map((member) => member.id)).toEqual(["dono-b"]);
-      expect(await world.registry.findBySlug("cantina-b")).toMatchObject({ id: "rest-b" });
-    });
-
     it("mudar a configuração de um não muda a do outro", async () => {
       const { a, b } = await setup();
       unwrap(await b.updateRestaurant({ serviceFeePercent: 12 }, "manager"));

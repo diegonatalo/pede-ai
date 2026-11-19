@@ -1,4 +1,4 @@
-import { DEMO_STAFF, MAP_SPOTS, MENU_CATEGORIES, MENU_ITEMS, RESTAURANT, TABLES } from "@/lib/seed-data";
+import { SAMPLE_STAFF, MAP_SPOTS, MENU_CATEGORIES, MENU_ITEMS, RESTAURANT, TABLES } from "@/lib/seed-data";
 import type { MapSpot, MenuCategory, MenuItem, Restaurant, StaffMember, Table } from "@/types/domain";
 
 /** Tudo que um restaurante tem ao nascer: configuração, salão, cardápio e equipe. */
@@ -40,14 +40,14 @@ export const slugify = (name: string) =>
     .replace(/-+$/, "");
 
 /** O restaurante de demonstração, com os PINs públicos. */
-export const demoRestaurantData = (): RestaurantData => ({
+export const sampleRestaurantData = (): RestaurantData => ({
   restaurant: structuredClone(RESTAURANT),
   ownerUserId: null,
   tables: structuredClone(TABLES),
   mapSpots: structuredClone(MAP_SPOTS),
   categories: structuredClone(MENU_CATEGORIES),
   menuItems: structuredClone(MENU_ITEMS),
-  staff: structuredClone(DEMO_STAFF),
+  staff: structuredClone(SAMPLE_STAFF),
 });
 
 type NewRestaurant = {

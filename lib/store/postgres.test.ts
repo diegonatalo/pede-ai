@@ -2,6 +2,8 @@
 import { existsSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { beforeEach, describe, expect, it } from "vitest";
+import { sampleRestaurantData } from "@/lib/restaurant-template";
+import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
 import { describeIsolationContract } from "@/lib/store/isolation-contract";
 import { createPostgresDb, createPostgresRegistry, createPostgresRepository } from "@/lib/store/postgres";
@@ -12,16 +14,18 @@ import { describeStoreContract } from "@/lib/store/store-contract";
 // ou um branch, e ponha a URL dele em TEST_DATABASE_URL no .env.local.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 const url = process.env.TEST_DATABASE_URL;
+const SAMPLE = { restaurantId: RESTAURANT.id };
 
 describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", () => {
   beforeEach(async () => {
     const sql = neon(url as string);
     await sql`TRUNCATE events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
       menu_items, menu_categories, map_spots, dining_tables, restaurants RESTART IDENTITY CASCADE`;
+    // O app não cria restaurante sozinho: cada teste começa com o restaurante de exemplo.
+    expect(await createPostgresRegistry(url as string).create(sampleRestaurantData())).toBe(true);
   });
 
-  // Um repositório novo por teste: os dados de demonstração voltam a ser gravados após o TRUNCATE.
-  describeStoreContract((options) => createStore(createPostgresRepository(url as string), options));
+  describeStoreContract((options) => createStore(createPostgresRepository(url as string, SAMPLE), options));
 
   // Dois restaurantes no mesmo banco, numa conexão só (como no app).
   describeIsolationContract(() => {
@@ -34,7 +38,7 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
 
   describe("gravações ao mesmo tempo", () => {
     const setup = async () => {
-      const repo = createPostgresRepository(url as string);
+      const repo = createPostgresRepository(url as string, SAMPLE);
       const store = createStore(repo);
       const opened = await store.openSession("mesa-2", "1234", "waiter");
       if (!opened.ok) throw new Error(opened.error);
@@ -81,7 +85,7 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
     });
 
     it("deixa só um garçom abrir a mesma mesa", async () => {
-      const store = createStore(createPostgresRepository(url as string));
+      const store = createStore(createPostgresRepository(url as string, SAMPLE));
       const results = await Promise.all([
         store.openSession("mesa-5", "1111", "waiter"),
         store.openSession("mesa-5", "2222", "waiter"),

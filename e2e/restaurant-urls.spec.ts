@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { collectErrors, PINS, title } from "./fixtures";
+import { collectErrors, createRestaurant, expect, staffLogin, test } from "./fixtures";
 
 test("a API recusa restaurante que não existe", async ({ request }) => {
   const response = await request.get("/api/menu?r=nao-existe");
@@ -15,21 +14,26 @@ test("as telas de um restaurante que não existe avisam pelo endereço", async (
   await expect(page.getByText("Restaurante não encontrado. Confira o endereço.")).toBeVisible();
 });
 
-test("o início leva à demonstração, e dela às telas pelo endereço do restaurante", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("link", { name: "Ver a demonstração" }).first().click();
-  await expect(page).toHaveURL("/demo");
-  await page.getByRole("link", { name: "Tela do garçom" }).click();
-  await expect(page).toHaveURL("/r/demo/garcom");
+test("o login da equipe num restaurante não abre as telas de outro", async ({ page, playwright, baseURL, restaurant }) => {
+  const owner = await playwright.request.newContext({ baseURL });
+  const other = await createRestaurant(owner, baseURL as string);
+  await owner.dispose();
   const errors = collectErrors(page);
 
-  await page.getByLabel("PIN").fill(PINS.waiter);
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await staffLogin(page.request, restaurant, "waiter");
+  await page.goto(restaurant.screen("garcom"));
   await expect(page.getByRole("heading", { level: 1, name: /^Garçom · / })).toBeVisible();
 
-  // O endereço antigo é a mesma demonstração: quem entrou continua dentro.
-  await page.goto("/garcom");
+  // Mesmo navegador, outro restaurante: pede o PIN de lá, e o daqui não serve.
+  await page.goto(other.screen("garcom"));
+  await expect(page.getByLabel("PIN")).toBeVisible();
+  await page.getByLabel("PIN").fill(restaurant.pins.waiter);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByText("PIN errado.")).toBeVisible();
+
+  // O primeiro continua aberto.
+  await page.goto(restaurant.screen("garcom"));
   await expect(page.getByRole("heading", { level: 1, name: /^Garçom · / })).toBeVisible();
-  await expect(title(page, "Garçom")).toHaveCount(0);
-  expect(errors).toEqual([]);
+  // O único erro esperado é o 401 do PIN errado.
+  expect(errors.filter((message) => !message.includes("401"))).toEqual([]);
 });

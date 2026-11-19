@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, PINS } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { collectErrors, expect, test } from "./fixtures";
 
 const loginOnScreen = async (page: Page, path: string, pin: string) => {
   await page.goto(path);
@@ -9,12 +9,12 @@ const loginOnScreen = async (page: Page, path: string, pin: string) => {
 
 test("o gerente cadastra um garçom, que entra com o próprio PIN e perde o acesso ao ser desativado", async ({
   browser,
+  restaurant,
 }) => {
-  // Nome único: os testes podem rodar de novo contra o mesmo servidor.
-  const name = `Bruno ${Date.now() % 100000}`;
+  const name = "Bruno";
   const manager = await (await browser.newContext()).newPage();
-  await loginOnScreen(manager, "/gerente", PINS.manager);
-  await expect(manager.getByRole("heading", { level: 1, name: "Gerente · Gerente da demo" })).toBeVisible();
+  await loginOnScreen(manager, restaurant.screen("gerente"), restaurant.pins.manager);
+  await expect(manager.getByRole("heading", { level: 1, name: `Gerente · ${restaurant.ownerName}` })).toBeVisible();
   const errors = collectErrors(manager);
 
   await manager.getByRole("button", { name: "Equipe" }).click();
@@ -30,7 +30,7 @@ test("o gerente cadastra um garçom, que entra com o próprio PIN e perde o aces
 
   // O garçom novo entra no próprio aparelho e aparece pelo nome.
   const waiter = await (await browser.newContext()).newPage();
-  await loginOnScreen(waiter, "/garcom", pin);
+  await loginOnScreen(waiter, restaurant.screen("garcom"), pin);
   await expect(waiter.getByRole("heading", { level: 1, name: `Garçom · ${name}` })).toBeVisible();
 
   // Desativado: perde o acesso na hora, mesmo com o cookie ainda válido.
@@ -45,12 +45,12 @@ test("o gerente cadastra um garçom, que entra com o próprio PIN e perde o aces
   expect(errors).toEqual([]);
 });
 
-test("o PIN do garçom não abre a tela do gerente", async ({ page }) => {
-  await loginOnScreen(page, "/gerente", PINS.waiter);
+test("o PIN do garçom não abre a tela do gerente", async ({ page, restaurant }) => {
+  await loginOnScreen(page, restaurant.screen("gerente"), restaurant.pins.waiter);
   await expect(page.getByText("Este PIN não dá acesso a esta tela.", { exact: false })).toBeVisible();
 });
 
-test("o gerente pode usar a tela do garçom com o próprio PIN", async ({ page }) => {
-  await loginOnScreen(page, "/garcom", PINS.manager);
-  await expect(page.getByRole("heading", { level: 1, name: "Garçom · Gerente da demo" })).toBeVisible();
+test("o gerente pode usar a tela do garçom com o próprio PIN", async ({ page, restaurant }) => {
+  await loginOnScreen(page, restaurant.screen("garcom"), restaurant.pins.manager);
+  await expect(page.getByRole("heading", { level: 1, name: `Garçom · ${restaurant.ownerName}` })).toBeVisible();
 });

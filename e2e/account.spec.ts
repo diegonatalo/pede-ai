@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { collectErrors, title } from "./fixtures";
+import { collectErrors, expect, test, title } from "./fixtures";
 
 // E-mail novo a cada execução: os testes podem rodar de novo contra o mesmo servidor.
 const email = () => `dono-${Date.now()}-${Math.floor(Math.random() * 1e6)}@exemplo.com`;

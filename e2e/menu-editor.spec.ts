@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { collectErrors, openOwnRestaurant } from "./fixtures";
+import { collectErrors, expect, openOwnRestaurant, staffLogin, test } from "./fixtures";
 
 type PublicMenu = {
   categories: { id: string; name: string; position: number }[];
@@ -7,7 +6,7 @@ type PublicMenu = {
 };
 
 test("o gerente monta o cardápio e o cliente vê na hora", async ({ page }) => {
-  // Restaurante próprio: os outros testes usam o cardápio da demo em paralelo.
+  // Restaurante criado pela tela, como um dono faria.
   const slug = await openOwnRestaurant(page);
   const errors = collectErrors(page);
   const publicMenu = async (): Promise<PublicMenu> => (await page.request.get(`/api/menu?r=${slug}`)).json();
@@ -57,10 +56,10 @@ test("o gerente monta o cardápio e o cliente vê na hora", async ({ page }) => 
   expect(errors).toEqual([]);
 });
 
-test("só o gerente edita o cardápio", async ({ request }) => {
-  const response = await request.post("/api/staff/menu?role=waiter", {
-    data: { type: "delete_item", id: "chope" },
-    headers: { "content-type": "application/json" },
-  });
-  expect(response.status()).toBe(401);
+test("só o gerente edita o cardápio", async ({ request, restaurant }) => {
+  const body = { data: { type: "delete_item", id: restaurant.item("Chope") }, headers: { "content-type": "application/json" } };
+  // Sem PIN, nada; com o PIN do garçom, a tela do gerente não abre.
+  expect((await request.post(restaurant.api("/api/staff/menu?role=manager"), body)).status()).toBe(401);
+  await staffLogin(request, restaurant, "waiter");
+  expect((await request.post(restaurant.api("/api/staff/menu?role=waiter"), body)).status()).toBe(403);
 });

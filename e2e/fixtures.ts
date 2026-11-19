@@ -1,4 +1,6 @@
-import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { test as base, expect, type APIRequestContext, type Page } from "@playwright/test";
+
+export { expect };
 
 export const title = (page: Page, name: string) =>
   page.getByRole("heading", { level: 1, name, exact: true });
@@ -16,67 +18,123 @@ export const collectErrors = (page: Page) => {
 /** Opções de uma requisição JSON (os comandos da API só aceitam JSON). */
 export const json = (data: unknown) => ({ data, headers: { "content-type": "application/json" } });
 
-export const PINS = { kitchen: "1111", waiter: "2222", manager: "3333" } as const;
+/** Identificador curto e único: os testes rodam em paralelo e podem repetir contra o mesmo servidor. */
+export const uniqueId = () => `${Date.now() % 1e8}${Math.floor(Math.random() * 1e4)}`;
 
-export const staffLogin = async (device: APIRequestContext, role: keyof typeof PINS) => {
-  const response = await device.post("/api/staff/login", json({ role, pin: PINS[role] }));
+type StaffRole = "manager" | "waiter" | "kitchen";
+
+/** Restaurante criado pelo fluxo real (conta + cadastro), só deste teste. */
+export type TestRestaurant = {
+  slug: string;
+  /** Nome do dono, que é o gerente. */
+  ownerName: string;
+  /** PIN de cada papel: o do gerente é o do dono; garçom e cozinha são cadastrados pela equipe. */
+  pins: Record<StaffRole, string>;
+  staffNames: Record<StaffRole, string>;
+  /** Id da mesa pelo nome mostrado ("Mesa 3"). */
+  table: (label: string) => string;
+  /** Id do item do cardápio pelo nome ("Chope"). */
+  item: (name: string) => string;
+  /** Caminho de uma tela do restaurante: `screen("garcom")` → `/r/<slug>/garcom`. */
+  screen: (path: string) => string;
+  /** Caminho da API com o restaurante (`?r=<slug>`). */
+  api: (path: string) => string;
+};
+
+const withRestaurant = (path: string, slug: string) => `${path}${path.includes("?") ? "&" : "?"}r=${slug}`;
+
+/**
+ * Cria a conta do dono, o restaurante (que nasce com o salão e o cardápio de exemplo) e uma
+ * pessoa de garçom e uma de cozinha, como um dono faria pela conta e pela tela de equipe.
+ */
+export const createRestaurant = async (owner: APIRequestContext, baseURL: string): Promise<TestRestaurant> => {
+  const id = uniqueId();
+  const slug = `teste-${id}`;
+  const ownerName = "Dona";
+  const signUp = await owner.post("/api/auth/sign-up/email", {
+    data: { name: ownerName, email: `dona-${id}@exemplo.com`, password: "senha-forte-1" },
+    headers: { "content-type": "application/json", origin: baseURL },
+  });
+  expect(signUp.ok(), await signUp.text()).toBe(true);
+
+  const created = await owner.post("/api/account/restaurants", json({ name: "Casa Teste", slug }));
+  expect(created.ok(), await created.text()).toBe(true);
+  const { pin: managerPin } = await created.json();
+
+  const api = (path: string) => withRestaurant(path, slug);
+  expect((await owner.post(api("/api/staff/login"), json({ role: "manager", pin: managerPin }))).ok()).toBe(true);
+  const staffNames: Record<StaffRole, string> = { manager: ownerName, waiter: "Garçom Teste", kitchen: "Cozinha Teste" };
+  const pins: Record<StaffRole, string> = { manager: managerPin, waiter: "", kitchen: "" };
+  for (const role of ["waiter", "kitchen"] as const) {
+    const member = await owner.post(api("/api/staff/team?role=manager"), json({ name: staffNames[role], role }));
+    expect(member.ok(), await member.text()).toBe(true);
+    pins[role] = (await member.json()).pin;
+  }
+
+  const overview = await (await owner.get(api("/api/staff/overview?role=manager"))).json();
+  const tables = new Map<string, string>(overview.tables.map((table: { id: string; label: string }) => [table.label, table.id]));
+  const items = new Map<string, string>(overview.menu.items.map((item: { id: string; name: string }) => [item.name, item.id]));
+  const lookup = (map: Map<string, string>, kind: string) => (name: string) => {
+    const found = map.get(name);
+    if (!found) throw new Error(`${kind} "${name}" não existe no restaurante de teste`);
+    return found;
+  };
+
+  return {
+    slug,
+    ownerName,
+    pins,
+    staffNames,
+    table: lookup(tables, "mesa"),
+    item: lookup(items, "item"),
+    screen: (path) => `/r/${slug}/${path}`,
+    api,
+  };
+};
+
+/** `test` com um restaurante novo por teste (criado só quando o teste usa `restaurant`). */
+export const test = base.extend<{ restaurant: TestRestaurant }>({
+  // O Playwright chama o terceiro argumento de `use`; aqui `provide`, para não confundir com hooks do React.
+  restaurant: async ({ playwright, baseURL }, provide) => {
+    const owner = await playwright.request.newContext({ baseURL });
+    const restaurant = await createRestaurant(owner, baseURL as string);
+    await owner.dispose();
+    await provide(restaurant);
+  },
+});
+
+export const staffLogin = async (device: APIRequestContext, restaurant: TestRestaurant, role: StaffRole) => {
+  const response = await device.post(restaurant.api("/api/staff/login"), json({ role, pin: restaurant.pins[role] }));
   expect(response.ok()).toBe(true);
 };
 
-/**
- * O garçom abre a mesa e devolve o código para o cliente. Se a mesa já estiver aberta
- * (nova tentativa do mesmo teste contra o mesmo servidor), reaproveita a sessão.
- */
-export const openTable = async (staff: APIRequestContext, tableId: string) => {
-  const response = await staff.post("/api/staff/sessions?role=waiter", json({ tableId }));
-  if (response.status() === 409) {
-    const overview = await (await staff.get("/api/staff/overview?role=waiter")).json();
-    const open = overview.sessions.find(
-      (entry: { session: { tableId: string } }) => entry.session.tableId === tableId,
-    );
-    return { session: open.session, joinCode: overview.joinCodes[open.session.id] } as {
-      session: { id: string };
-      joinCode: string;
-    };
-  }
+/** O garçom abre a mesa e devolve o código para o cliente. */
+export const openTable = async (staff: APIRequestContext, restaurant: TestRestaurant, label: string) => {
+  const response = await staff.post(
+    restaurant.api("/api/staff/sessions?role=waiter"),
+    json({ tableId: restaurant.table(label) }),
+  );
   expect(response.ok()).toBe(true);
   return (await response.json()) as { session: { id: string }; joinCode: string };
 };
 
-/**
- * Abre a mesa limpa: se ela ficou aberta de uma tentativa anterior, paga as comandas,
- * fecha e abre de novo. Para testes que contam comandas ou repetem nomes.
- */
-export const openFreshTable = async (staff: APIRequestContext, tableId: string) => {
-  const opened = await openTable(staff, tableId);
-  const overview = await (await staff.get("/api/staff/overview?role=waiter")).json();
-  const current = overview.sessions.find((entry: { session: { id: string } }) => entry.session.id === opened.session.id);
-  if (current.tabs.length === 0) return opened;
-  for (const tab of current.tabs as { id: string; status: string }[]) {
-    if (tab.status === "open" || tab.status === "bill_requested") {
-      await staff.post(`/api/staff/tabs/${tab.id}/status?role=waiter`, json({ to: "paid" }));
-    }
-  }
-  expect((await staff.post(`/api/staff/sessions/${opened.session.id}/close?role=waiter`, json({}))).ok()).toBe(true);
-  return openTable(staff, tableId);
-};
-
-/** Ids das comandas de uma mesa, na ordem em que foram abertas. */
-export const tabIdsOf = async (staff: APIRequestContext, sessionId: string) => {
-  const overview = await (await staff.get("/api/staff/overview?role=waiter")).json();
+/** Comandas de uma mesa, na ordem em que foram abertas. */
+export const tabsOf = async (staff: APIRequestContext, restaurant: TestRestaurant, sessionId: string) => {
+  const overview = await (await staff.get(restaurant.api("/api/staff/overview?role=waiter"))).json();
   const session = overview.sessions.find((entry: { session: { id: string } }) => entry.session.id === sessionId);
-  return session.tabs.map((tab: { id: string; customerName: string }) => tab);
+  return session.tabs as { id: string; customerName: string; status: string }[];
 };
 
 /** O cliente escaneia o QR, digita o código e abre a comanda. */
 export const joinAndOpenTab = async (
   page: Page,
-  tableId: string,
+  restaurant: TestRestaurant,
+  label: string,
   joinCode: string,
   name: string,
   people = 1,
 ) => {
-  await page.goto(`/mesa/${tableId}`);
+  await page.goto(restaurant.screen(`mesa/${restaurant.table(label)}`));
   await page.getByLabel("Código da mesa").fill(joinCode);
   await page.getByRole("button", { name: "Entrar na mesa" }).click();
   await page.getByLabel("Como podemos te chamar?").fill(name);
@@ -87,12 +145,9 @@ export const joinAndOpenTab = async (
   await expect(page.getByRole("searchbox", { name: "Buscar no cardápio" })).toBeVisible();
 };
 
-/**
- * Cria uma conta e um restaurante novos e entra na tela do gerente dele pela conta.
- * Para testes que mudam o cardápio ou o salão sem atrapalhar os que usam a demo em paralelo.
- */
+/** Cria uma conta e um restaurante pela tela e entra na tela do gerente dele pela conta. */
 export const openOwnRestaurant = async (page: Page) => {
-  const id = `${Date.now() % 1e8}${Math.floor(Math.random() * 1e3)}`;
+  const id = uniqueId();
   const slug = `teste-${id}`;
   await page.goto("/conta");
   await page.getByRole("button", { name: "Criar conta" }).click();
