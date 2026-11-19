@@ -84,3 +84,16 @@ test("código errado não entra na mesa", async ({ page, playwright, baseURL }) 
   await expect(page.getByText("Código errado. Confira com o garçom.")).toBeVisible();
   await expect(page.getByLabel("Como podemos te chamar?")).toHaveCount(0);
 });
+
+test("o cliente acha a mesa, o banheiro e o caixa no mapa", async ({ page, playwright, baseURL }) => {
+  const staff = await playwright.request.newContext({ baseURL });
+  await staffLogin(staff, "waiter");
+  const { joinCode } = await openTable(staff, "mesa-7");
+
+  await joinAndOpenTab(page, "mesa-7", joinCode, "Gabi");
+  await page.getByRole("button", { name: "Onde fica?" }).click();
+  await expect(page.getByRole("heading", { name: "Mapa do salão" })).toBeVisible();
+  await expect(page.getByText("Sua mesa: Mesa 7, no meio do salão, à direita.")).toBeVisible();
+  await expect(page.getByText("Banheiros:").locator("..")).toHaveText("Banheiros: ao fundo, à direita.");
+  await expect(page.getByText("Caixa:").locator("..")).toHaveText("Caixa: perto da entrada, à esquerda.");
+});

@@ -1,4 +1,4 @@
-import type { Order, OrderItem, Restaurant, Tab, Table, TableSession, WaiterCall } from "@/types/domain";
+import type { MapSpot, Order, OrderItem, Restaurant, Tab, Table, TableSession, WaiterCall } from "@/types/domain";
 import type { SessionSnapshot } from "@/types/store";
 
 export type CustomerTab = Pick<Tab, "id" | "customerName" | "peopleCount" | "status" | "approved"> & {
@@ -15,12 +15,15 @@ export type CustomerView = {
   /** Itens das próprias comandas e itens de outras comandas divididos com elas. */
   items: OrderItem[];
   calls: WaiterCall[];
+  /** Planta do salão, para o cliente achar a mesa, o banheiro e o caixa. */
+  mapSpots: MapSpot[];
 };
 
 export const customerView = (
   snapshot: SessionSnapshot,
   restaurant: Restaurant,
   tabIds: string[],
+  mapSpots: MapSpot[] = [],
 ): CustomerView => {
   const mine = new Set(tabIds);
   const orderTab = new Map(snapshot.orders.map((order) => [order.id, order.tabId]));
@@ -50,6 +53,7 @@ export const customerView = (
         mine.has(orderTab.get(item.orderId) ?? "") || item.shares.some((share) => mine.has(share.tabId)),
     ),
     calls: snapshot.calls.filter((call) => call.tabId !== undefined && mine.has(call.tabId)),
+    mapSpots,
   };
 };
 

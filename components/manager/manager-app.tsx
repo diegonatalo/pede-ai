@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { QrSheet } from "@/components/manager/qr-sheet";
 import { ReportPanel } from "@/components/manager/report-panel";
 import { SettingsForm } from "@/components/manager/settings-form";
 import { StaffHeader } from "@/components/staff/staff-header";
@@ -13,11 +14,12 @@ import { useStaffOverview } from "@/hooks/use-staff-overview";
 import { cn } from "@/lib/cn";
 import { tableBoard } from "@/lib/selectors";
 
-type Section = "floor" | "report" | "settings";
+type Section = "floor" | "report" | "qr" | "settings";
 
 const SECTIONS: [Section, string][] = [
   ["floor", "Salão"],
   ["report", "Números"],
+  ["qr", "QR codes"],
   ["settings", "Ajustes"],
 ];
 
@@ -66,9 +68,9 @@ export const ManagerApp = () => {
       />
       <nav
         aria-label="Seções"
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:static md:border-t-0 md:border-b"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur md:static md:border-t-0 md:border-b print:hidden"
       >
-        <ul className="mx-auto grid max-w-6xl grid-cols-3 md:flex md:gap-2 md:px-4">
+        <ul className="mx-auto grid max-w-6xl grid-cols-4 md:flex md:gap-2 md:px-4">
           {SECTIONS.map(([id, label]) => (
             <li key={id}>
               <button
@@ -113,6 +115,7 @@ export const ManagerApp = () => {
               {reportMessage || "Carregando os números…"}
             </p>
           ))}
+        {section === "qr" && <QrSheet tables={data.tables} />}
         {section === "settings" && (
           <SettingsForm
             // Recria o formulário só quando a configuração muda (não a cada pedido, o que apagaria o que está sendo digitado).

@@ -17,6 +17,12 @@ test("o gerente vê o salão, os números do dia e os ajustes", async ({ page })
   await expect(page.getByText("Faturamento")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Mais pedidos" })).toBeVisible();
 
+  // QR codes: um por mesa, com o link da tela do cliente (aqui, o servidor local do teste).
+  await page.getByRole("button", { name: "QR codes" }).click();
+  await expect(page.getByRole("img", { name: /QR code da Mesa/ })).toHaveCount(8);
+  await expect(page.getByText(/\/mesa\/mesa-1$/)).toBeVisible();
+  await expect(page.getByText("só funciona neste computador", { exact: false })).toBeVisible();
+
   // Os outros testes rodam em paralelo contando com taxa de 10% e couvert zero:
   // aqui salva os mesmos valores, o que confere o caminho todo sem mudar a configuração.
   await page.getByRole("button", { name: "Ajustes" }).click();
