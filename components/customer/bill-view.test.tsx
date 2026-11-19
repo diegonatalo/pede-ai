@@ -44,6 +44,7 @@ const view = (status: CustomerTab["status"] = "open"): CustomerView => ({
     item("vinho", "Vinho", "ob", 12900, ["b", "a"]),
   ],
   calls: [],
+  mapSpots: [],
 });
 
 afterEach(() => {

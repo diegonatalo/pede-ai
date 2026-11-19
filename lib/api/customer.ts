@@ -63,7 +63,8 @@ export const getCustomerView = async (store: Store, identity: Identity): Promise
   if (!result.ok) return success({ state: "guest" }, { customer: null });
   if (result.value.session.status !== "open") return success({ state: "closed" }, { customer: null });
   const { lastSeq } = await store.getEvents(Number.MAX_SAFE_INTEGER);
-  const view = customerView(result.value, await store.getRestaurant(), identity.tabIds);
+  const [restaurant, mapSpots] = await Promise.all([store.getRestaurant(), store.listMapSpots()]);
+  const view = customerView(result.value, restaurant, identity.tabIds, mapSpots);
   return success({ state: "ready", ...view, lastSeq });
 };
 

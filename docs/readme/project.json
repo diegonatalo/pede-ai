@@ -65,6 +65,10 @@
     {
       "title": "Conta dividida",
       "desc": "A conta sai por comanda, com itens divididos, taxa de serviço e couvert."
+    },
+    {
+      "title": "QR code e mapa",
+      "desc": "Folha de QR codes para imprimir, um por mesa, e o mapa do salão com a mesa, os banheiros e o caixa."
     }
   ],
   "credits": [],

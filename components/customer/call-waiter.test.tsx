@@ -14,6 +14,7 @@ const view = (calls: WaiterCall[]): CustomerView => ({
   orders: [],
   items: [],
   calls,
+  mapSpots: [],
 });
 
 const call = (status: WaiterCall["status"]): WaiterCall => ({

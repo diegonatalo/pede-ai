@@ -28,6 +28,7 @@ const view = (items: OrderItem[]): CustomerView => ({
   orders: [{ id: "o1", sessionId: "s1", tabId: "t1", createdAt: "2026-11-18T20:00:00.000Z" }],
   items,
   calls: [],
+  mapSpots: [],
 });
 
 describe("OrdersList", () => {

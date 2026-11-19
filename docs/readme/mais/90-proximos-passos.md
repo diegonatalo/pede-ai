@@ -7,4 +7,5 @@
 - [x] Chamar o garçom e conta pelo celular, com divisão de itens em partes.
 - [x] Banco de dados (Postgres no Neon, com Drizzle) para funcionar em vários aparelhos.
 - [x] Tela do gerente: salão, números do dia e ajustes (taxa, couvert, confirmação do primeiro pedido).
-- [ ] QR codes para imprimir e mapa do salão.
+- [x] QR codes para imprimir (um por mesa) e mapa do salão no celular do cliente.
+- [ ] Fase 2: chamados em tempo real, login de verdade para a equipe, pagamento e nota fiscal.
