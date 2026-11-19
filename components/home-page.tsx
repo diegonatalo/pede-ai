@@ -38,7 +38,11 @@ export const HomePage = () => (
         <li>
           Em outro celular, ou numa janela anônima, abra a mesa como cliente, digite o código e faça um pedido.
         </li>
-        <li>Volte ao garçom para confirmar o pedido, marcar as comandas como pagas e fechar a mesa.</li>
+        <li>
+          No garçom, confirme o pedido. Na cozinha (PIN{" "}
+          <strong className="font-mono text-foreground">{DEMO_PINS.kitchen}</strong>), comece e marque como pronto.
+        </li>
+        <li>O garçom retira, entrega, marca as comandas como pagas e fecha a mesa.</li>
       </ol>
       <p className="text-sm text-muted">
         Os dados ficam só na memória do servidor da demonstração e somem quando ele reinicia.
@@ -46,6 +50,9 @@ export const HomePage = () => (
       <div className="flex flex-wrap gap-3">
         <Link href="/garcom" className={BUTTON.primary}>
           Tela do garçom
+        </Link>
+        <Link href="/cozinha" className={BUTTON.secondary}>
+          Cozinha e bar
         </Link>
         <Link href="/mesa/mesa-1" className={BUTTON.secondary}>
           Mesa 1 (cliente)

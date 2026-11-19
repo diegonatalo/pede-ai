@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { RESTAURANT, TABLES } from "@/lib/seed-data";
 import {
   activeCalls,
+  kitchenQueue,
   minutesSince,
   pendingApprovals,
   pickupQueue,
@@ -131,6 +132,38 @@ describe("tableBoard", () => {
   it("deixa fechar quando todas as comandas estão pagas", () => {
     const paid = session(4, [tab("lia", true, "paid")], [item("cafe", "lia", "delivered", 1)]);
     expect(tableBoard(TABLES, [paid], RESTAURANT, {})[4].canClose).toBe(true);
+  });
+});
+
+describe("kitchenQueue", () => {
+  const bar = (entry: OrderItem): OrderItem => ({ ...entry, station: "bar" });
+  const kitchenSessions = [
+    session(0, [tab("ana", true)], [
+      item("risoto", "ana", "preparing", 4),
+      bar(item("chope", "ana", "sent", 6)),
+      item("lasanha", "ana", "sent", 2),
+      item("agua", "ana", "delivered", 1),
+      item("pudim", "ana", "awaiting_approval", 1),
+    ]),
+    session(2, [tab("caio", true)], [item("nhoque", "caio", "sent", 5), item("bruschetta", "caio", "ready", 3)]),
+  ];
+
+  it("separa em colunas, do mais antigo para o mais novo, com mesa e comanda", () => {
+    const queue = kitchenQueue(kitchenSessions, "all");
+    expect(queue.sent.map((ticket) => ticket.item.id)).toEqual(["lasanha", "nhoque", "chope"]);
+    expect(queue.preparing.map((ticket) => [ticket.item.id, ticket.table.label, ticket.tabName])).toEqual([
+      ["risoto", "Mesa 1", "ANA"],
+    ]);
+    expect(queue.ready.map((ticket) => ticket.item.id)).toEqual(["bruschetta"]);
+  });
+
+  it("filtra por estação e deixa de fora o que não é da cozinha", () => {
+    expect(kitchenQueue(kitchenSessions, "bar").sent.map((ticket) => ticket.item.id)).toEqual(["chope"]);
+    const kitchen = kitchenQueue(kitchenSessions, "kitchen");
+    const ids = [...kitchen.sent, ...kitchen.preparing, ...kitchen.ready].map((ticket) => ticket.item.id);
+    expect(ids).not.toContain("chope");
+    expect(ids).not.toContain("agua");
+    expect(ids).not.toContain("pudim");
   });
 });
 
