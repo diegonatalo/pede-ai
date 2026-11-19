@@ -10,6 +10,10 @@ import type { ItemShare, ItemStatus } from "@/types/domain";
 
 export const restaurants = pgTable("restaurants", {
   id: text("id").primaryKey(),
+  /** Endereço do restaurante (`/r/<slug>`), único. */
+  slug: text("slug").notNull().unique(),
+  /** Conta (Better Auth) dona do restaurante; nulo no restaurante de demonstração. */
+  ownerUserId: text("owner_user_id"),
   name: text("name").notNull(),
   serviceFeePercent: integer("service_fee_percent").notNull(),
   couvertCents: integer("couvert_cents").notNull(),
@@ -194,15 +198,21 @@ export const waiterCalls = pgTable(
 );
 
 /** Registro de mudanças: as telas consultam os eventos depois do último `seq` que viram. */
-export const events = pgTable("events", {
+export const events = pgTable(
+  "events",
+  {
   seq: bigserial("seq", { mode: "number" }).primaryKey(),
+  restaurantId: text("restaurant_id").notNull(),
   type: text("type").notNull(),
   at: text("at").notNull(),
   actor: text("actor").notNull(),
   actorStaffId: text("actor_staff_id"),
   sessionId: text("session_id"),
   entityId: text("entity_id").notNull(),
-});
+  },
+  // O feed de cada restaurante lê os eventos dele depois de um seq.
+  (table) => [index("events_restaurant_seq").on(table.restaurantId, table.seq)],
+);
 
 // --- Login das contas (Better Auth) ---
 // Nomes das colunas iguais aos campos que o Better Auth espera (user, session, account, verification);

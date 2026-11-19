@@ -3,7 +3,8 @@ import { existsSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createStore } from "@/lib/store/engine";
-import { createPostgresRepository } from "@/lib/store/postgres";
+import { describeIsolationContract } from "@/lib/store/isolation-contract";
+import { createPostgresDb, createPostgresRegistry, createPostgresRepository } from "@/lib/store/postgres";
 import { describeStoreContract } from "@/lib/store/store-contract";
 
 // Banco de TESTE, nunca o de produção: cada teste apaga todas as tabelas.
@@ -21,6 +22,15 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
 
   // Um repositório novo por teste: os dados de demonstração voltam a ser gravados após o TRUNCATE.
   describeStoreContract((options) => createStore(createPostgresRepository(url as string), options));
+
+  // Dois restaurantes no mesmo banco, numa conexão só (como no app).
+  describeIsolationContract(() => {
+    const db = createPostgresDb(url as string);
+    return {
+      registry: createPostgresRegistry(url as string, { db }),
+      storeFor: (restaurantId) => createStore(createPostgresRepository(url as string, { restaurantId, db })),
+    };
+  });
 
   describe("gravações ao mesmo tempo", () => {
     const setup = async () => {

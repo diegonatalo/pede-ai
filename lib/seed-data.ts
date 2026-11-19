@@ -6,6 +6,7 @@ import type { MapSpot, MenuCategory, MenuItem, Restaurant, StaffMember, StaffRol
  */
 export const RESTAURANT: Restaurant = {
   id: "demo",
+  slug: "demo",
   name: "Cantina Pede Aí",
   serviceFeePercent: 10,
   couvertCents: 0,

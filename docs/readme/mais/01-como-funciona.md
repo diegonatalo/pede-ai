@@ -8,5 +8,6 @@
 | **Conta do dono** | O dono do restaurante cria a conta com e-mail e senha (Better Auth; senha guardada só como hash, sessões no banco). Sem serviço externo: por enquanto não há confirmação de e-mail nem redefinição por link. |
 | **Equipe** | Cada pessoa tem o próprio PIN de 6 dígitos, criado pelo gerente na seção Equipe e mostrado uma vez só. O banco guarda só uma chave derivada do PIN (HMAC com a chave do app). Cada ação registra quem fez; quem é desativado perde o acesso na hora. O gerente pode usar qualquer tela; as outras pessoas, só a do próprio papel. A demonstração tem uma pessoa por papel com os PINs públicos 1111, 2222 e 3333. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN pessoal, e o cookie guarda quem entrou em cada tela. |
+| **Vários restaurantes** | Cada restaurante tem endereço próprio (slug) e o próprio salão, cardápio, equipe, mesas e eventos. A camada de dados é criada para um restaurante e toda consulta filtra por ele: nada de um aparece ou muda no outro, nem pelo id. |
 | **Duas pessoas ao mesmo tempo** | Cada mesa tem uma versão. Uma gravação só vale se ninguém gravou a mesma mesa desde a leitura; se gravou, o app relê e tenta de novo. |
 | **Conta** | Calculada por comanda, em centavos inteiros: itens próprios, partes de itens divididos, taxa de serviço e couvert. |

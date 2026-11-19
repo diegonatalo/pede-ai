@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getStore, storeKind } from "@/lib/store";
 import type { Store } from "@/types/store";
 
-const holder = globalThis as typeof globalThis & { __pedeAiStore?: Store };
+const holder = globalThis as typeof globalThis & { __pedeAiStores?: Map<string, Store> };
 
 describe("storeKind", () => {
   const url = "postgres://exemplo";
@@ -23,14 +23,14 @@ describe("storeKind", () => {
 });
 
 describe("getStore", () => {
-  it("devolve sempre o mesmo store no processo", () => {
-    expect(getStore()).toBe(getStore());
+  it("devolve sempre o mesmo store para o mesmo restaurante", () => {
+    expect(getStore()).toBe(getStore("demo"));
   });
 
-  it("troca um store antigo, sem os métodos atuais, por um novo (next dev)", () => {
+  it("troca o mundo em memória quando o motor ganhou métodos novos (next dev)", () => {
     const old: Partial<Store> = { ...getStore() };
     delete old.listSessionsSince;
-    holder.__pedeAiStore = old as Store;
+    holder.__pedeAiStores = new Map([["demo", old as Store]]);
     const after = getStore();
     expect(after).not.toBe(old);
     expect(typeof after.listSessionsSince).toBe("function");

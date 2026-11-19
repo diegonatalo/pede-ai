@@ -3,7 +3,8 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
-import { DEMO_STAFF, MAP_SPOTS, MENU_CATEGORIES, MENU_ITEMS, RESTAURANT, TABLES } from "@/lib/seed-data";
+import { demoRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
+import { RESTAURANT } from "@/lib/seed-data";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
   MapSpot,
@@ -17,7 +18,15 @@ import type {
   TableSession,
   WaiterCall,
 } from "@/types/domain";
-import type { NewEvent, Repository, SessionRecord, SessionSecret, StoreEvent } from "@/types/store";
+import type {
+  NewEvent,
+  Repository,
+  RestaurantRecord,
+  RestaurantRegistry,
+  SessionRecord,
+  SessionSecret,
+  StoreEvent,
+} from "@/types/store";
 
 const {
   diningTables,
@@ -34,13 +43,17 @@ const {
   waiterCalls,
 } = schema;
 
-type Db = ReturnType<typeof drizzle<typeof schema>>;
+export type Db = ReturnType<typeof drizzle<typeof schema>>;
+
+/** Uma conexão (HTTP) para repartir entre o cadastro e os repositórios de cada restaurante. */
+export const createPostgresDb = (url: string): Db => drizzle(url, { schema });
 type Batch = [BatchItem<"pg">, ...BatchItem<"pg">[]];
 
 // --- linhas do banco ↔ domínio (null no banco = campo ausente no domínio) ---
 
 const toRestaurant = (row: typeof restaurants.$inferSelect): Restaurant => ({
   id: row.id,
+  slug: row.slug,
   name: row.name,
   serviceFeePercent: row.serviceFeePercent,
   couvertCents: row.couvertCents,
@@ -154,7 +167,8 @@ const toEvent = (row: typeof events.$inferSelect): StoreEvent => ({
   entityId: row.entityId,
 });
 
-const eventRow = (event: NewEvent): typeof events.$inferInsert => ({
+const eventRow = (event: NewEvent, restaurantId: string): typeof events.$inferInsert => ({
+  restaurantId,
   type: event.type,
   at: event.at,
   actor: event.actor,
@@ -185,28 +199,51 @@ const pgError = (error: unknown): { code?: string; message: string } => {
   return { code, message: messages.join(" | ") };
 };
 
+/** Linhas de um restaurante inteiro (configuração, salão, cardápio e equipe) para gravar de uma vez. */
+const restaurantRows = (db: Db, data: RestaurantData, pinKey: StaffPinKey) => ({
+  restaurant: db.insert(restaurants).values({ ...data.restaurant, ownerUserId: data.ownerUserId }),
+  tables: db.insert(diningTables).values(data.tables.map((table, position) => ({ ...table, position }))),
+  spots: db
+    .insert(mapSpots)
+    .values(data.mapSpots.map((spot, position) => ({ ...spot, tableId: spot.tableId ?? null, position }))),
+  categories: db.insert(menuCategories).values(data.categories),
+  items: db.insert(menuItems).values(data.menuItems.map((item, position) => ({ ...item, position }))),
+  staff: db
+    .insert(staffMembers)
+    .values(data.staff.map(({ pin, ...member }) => ({ ...member, pinKey: pinKey(member.restaurantId, pin) }))),
+});
+
 /**
- * Grava os dados de demonstração na primeira vez (sem mexer no que já existe). A equipe da demo
+ * Grava o restaurante de demonstração na primeira vez (sem mexer no que já existe). A equipe da demo
  * é regravada sempre, para a chave do PIN acompanhar a chave do app se ela mudar.
  */
-const seed = async (db: Db, pinKey: StaffPinKey) => {
+const seedDemo = async (db: Db, pinKey: StaffPinKey) => {
+  const rows = restaurantRows(db, demoRestaurantData(), pinKey);
   await db.batch([
-    db.insert(restaurants).values(RESTAURANT).onConflictDoNothing(),
-    db.insert(diningTables).values(TABLES.map((table, position) => ({ ...table, position }))).onConflictDoNothing(),
-    db
-      .insert(mapSpots)
-      .values(MAP_SPOTS.map((spot, position) => ({ ...spot, tableId: spot.tableId ?? null, position })))
-      .onConflictDoNothing(),
-    db.insert(menuCategories).values(MENU_CATEGORIES).onConflictDoNothing(),
-    db.insert(menuItems).values(MENU_ITEMS.map((item, position) => ({ ...item, position }))).onConflictDoNothing(),
-    db
-      .insert(staffMembers)
-      .values(DEMO_STAFF.map(({ pin, ...member }) => ({ ...member, pinKey: pinKey(member.restaurantId, pin) })))
-      .onConflictDoUpdate({
-        target: staffMembers.id,
-        set: { pinKey: sql.raw('excluded."pin_key"'), active: true, system: true },
-      }),
+    rows.restaurant.onConflictDoNothing(),
+    rows.tables.onConflictDoNothing(),
+    rows.spots.onConflictDoNothing(),
+    rows.categories.onConflictDoNothing(),
+    rows.items.onConflictDoNothing(),
+    rows.staff.onConflictDoUpdate({
+      target: staffMembers.id,
+      set: { pinKey: sql.raw('excluded."pin_key"'), active: true, system: true },
+    }),
   ]);
+};
+
+/** Uma gravação da demo por conexão, compartilhada pelo cadastro e pelos repositórios. */
+const seededFor = new WeakMap<Db, Promise<void>>();
+const ensureSeeded = (db: Db, pinKey: StaffPinKey) => {
+  let seeded = seededFor.get(db);
+  if (!seeded) {
+    seeded = seedDemo(db, pinKey).catch((error: unknown) => {
+      seededFor.delete(db);
+      throw error;
+    });
+    seededFor.set(db, seeded);
+  }
+  return seeded;
 };
 
 /**
@@ -215,23 +252,25 @@ const seed = async (db: Db, pinKey: StaffPinKey) => {
  */
 export const createPostgresRepository = (
   url: string,
-  { pinKey = defaultStaffPinKey() }: { pinKey?: StaffPinKey } = {},
+  {
+    restaurantId = RESTAURANT.id,
+    pinKey = defaultStaffPinKey(),
+    db: shared,
+  }: { restaurantId?: string; pinKey?: StaffPinKey; db?: Db } = {},
 ): Repository => {
-  const db: Db = drizzle(url, { schema });
-  let seeded: Promise<void> | null = null;
-  const ready = () => {
-    seeded ??= seed(db, pinKey).catch((error: unknown) => {
-      seeded = null;
-      throw error;
-    });
-    return seeded;
-  };
+  const db: Db = shared ?? drizzle(url, { schema });
+  const ready = () => ensureSeeded(db, pinKey);
+  /** Sessões deste restaurante: toda consulta por comanda, item ou chamado passa por aqui. */
+  const ownSessions = () =>
+    db.select({ id: tableSessions.id }).from(tableSessions).where(eq(tableSessions.restaurantId, restaurantId));
 
   // Mesas, mapa e categorias não mudam com o app rodando: ficam guardados no processo.
   let tablesCache: Table[] | null = null;
   let spotsCache: MapSpot[] | null = null;
 
-  const loadRecords = async (where: SQL): Promise<SessionRecord[]> => {
+  const loadRecords = async (condition: SQL): Promise<SessionRecord[]> => {
+    // Nunca carrega mesa de outro restaurante, nem pelo id.
+    const where = and(condition, eq(tableSessions.restaurantId, restaurantId)) as SQL;
     const ids = db.select({ id: tableSessions.id }).from(tableSessions).where(where);
     const [sessionRows, tabRows, orderRows, itemRows, callRows] = await db.batch([
       db.select().from(tableSessions).where(where).orderBy(asc(tableSessions.n)),
@@ -254,35 +293,47 @@ export const createPostgresRepository = (
   return {
     async getRestaurant() {
       await ready();
-      const [row] = await db.select().from(restaurants).where(eq(restaurants.id, RESTAURANT.id));
+      const [row] = await db.select().from(restaurants).where(eq(restaurants.id, restaurantId));
       return toRestaurant(row);
     },
 
     async saveRestaurant(restaurant, event) {
       await ready();
       await db.batch([
-        db.update(restaurants).set(restaurant).where(eq(restaurants.id, restaurant.id)),
-        db.insert(events).values(eventRow(event)),
+        db.update(restaurants).set(restaurant).where(eq(restaurants.id, restaurantId)),
+        db.insert(events).values(eventRow(event, restaurantId)),
       ]);
     },
 
     async listTables() {
       await ready();
-      tablesCache ??= (await db.select().from(diningTables).orderBy(asc(diningTables.position))).map(toTable);
+      tablesCache ??= (
+        await db
+          .select()
+          .from(diningTables)
+          .where(eq(diningTables.restaurantId, restaurantId))
+          .orderBy(asc(diningTables.position))
+      ).map(toTable);
       return structuredClone(tablesCache);
     },
 
     async listMapSpots() {
       await ready();
-      spotsCache ??= (await db.select().from(mapSpots).orderBy(asc(mapSpots.position))).map(toSpot);
+      spotsCache ??= (
+        await db.select().from(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)).orderBy(asc(mapSpots.position))
+      ).map(toSpot);
       return structuredClone(spotsCache);
     },
 
     async getMenu() {
       await ready();
       const [categories, items] = await db.batch([
-        db.select().from(menuCategories).orderBy(asc(menuCategories.position)),
-        db.select().from(menuItems).orderBy(asc(menuItems.position)),
+        db
+          .select()
+          .from(menuCategories)
+          .where(eq(menuCategories.restaurantId, restaurantId))
+          .orderBy(asc(menuCategories.position)),
+        db.select().from(menuItems).where(eq(menuItems.restaurantId, restaurantId)).orderBy(asc(menuItems.position)),
       ]);
       return { categories, items: items.map(toMenuItem) };
     },
@@ -291,8 +342,8 @@ export const createPostgresRepository = (
       await ready();
       const { id, ...fields } = item;
       await db.batch([
-        db.update(menuItems).set(fields).where(eq(menuItems.id, id)),
-        db.insert(events).values(eventRow(event)),
+        db.update(menuItems).set(fields).where(and(eq(menuItems.id, id), eq(menuItems.restaurantId, restaurantId))),
+        db.insert(events).values(eventRow(event, restaurantId)),
       ]);
     },
 
@@ -303,12 +354,27 @@ export const createPostgresRepository = (
           ? await db
               .select({ id: tableSessions.id })
               .from(tableSessions)
-              .where(and(eq(tableSessions.tableId, ref.openAtTable), eq(tableSessions.status, "open")))
+              .where(
+                and(
+                  eq(tableSessions.restaurantId, restaurantId),
+                  eq(tableSessions.tableId, ref.openAtTable),
+                  eq(tableSessions.status, "open"),
+                ),
+              )
           : "tabId" in ref
-            ? await db.select({ id: tabs.sessionId }).from(tabs).where(eq(tabs.id, ref.tabId))
+            ? await db
+                .select({ id: tabs.sessionId })
+                .from(tabs)
+                .where(and(eq(tabs.id, ref.tabId), inArray(tabs.sessionId, ownSessions())))
             : "itemId" in ref
-              ? await db.select({ id: orderItems.sessionId }).from(orderItems).where(eq(orderItems.id, ref.itemId))
-              : await db.select({ id: waiterCalls.sessionId }).from(waiterCalls).where(eq(waiterCalls.id, ref.callId));
+              ? await db
+                  .select({ id: orderItems.sessionId })
+                  .from(orderItems)
+                  .where(and(eq(orderItems.id, ref.itemId), inArray(orderItems.sessionId, ownSessions())))
+              : await db
+                  .select({ id: waiterCalls.sessionId })
+                  .from(waiterCalls)
+                  .where(and(eq(waiterCalls.id, ref.callId), inArray(waiterCalls.sessionId, ownSessions())));
       return row?.id ?? null;
     },
 
@@ -337,7 +403,7 @@ export const createPostgresRepository = (
             lockedUntil: secret.lockedUntil ?? null,
             version: 1,
           }),
-          db.insert(events).values(eventRow(event)),
+          db.insert(events).values(eventRow(event, restaurantId)),
         ]);
         return true;
       } catch (error) {
@@ -391,7 +457,7 @@ export const createPostgresRepository = (
             .onConflictDoUpdate({ target: waiterCalls.id, set: replaceAll(waiterCalls) }),
         );
       }
-      if (event) queries.push(db.insert(events).values(eventRow(event)));
+      if (event) queries.push(db.insert(events).values(eventRow(event, restaurantId)));
 
       try {
         await db.batch(queries as Batch);
@@ -405,13 +471,14 @@ export const createPostgresRepository = (
 
     async getEvents(afterSeq, sessionId) {
       await ready();
+      const own = eq(events.restaurantId, restaurantId);
       const filter =
         sessionId === undefined
-          ? gt(events.seq, afterSeq)
-          : and(gt(events.seq, afterSeq), or(eq(events.sessionId, sessionId), isNull(events.sessionId)));
+          ? and(own, gt(events.seq, afterSeq))
+          : and(own, gt(events.seq, afterSeq), or(eq(events.sessionId, sessionId), isNull(events.sessionId)));
       const [rows, [last]] = await db.batch([
         db.select().from(events).where(filter).orderBy(asc(events.seq)),
-        db.select({ lastSeq: max(events.seq) }).from(events),
+        db.select({ lastSeq: max(events.seq) }).from(events).where(own),
       ]);
       return { events: rows.map(toEvent), lastSeq: last?.lastSeq ?? 0 };
     },
@@ -421,7 +488,7 @@ export const createPostgresRepository = (
       const rows = await db
         .select()
         .from(staffMembers)
-        .where(eq(staffMembers.restaurantId, RESTAURANT.id))
+        .where(eq(staffMembers.restaurantId, restaurantId))
         .orderBy(asc(staffMembers.n));
       return rows.map(toStaff);
     },
@@ -431,13 +498,16 @@ export const createPostgresRepository = (
       const [row] = await db
         .select()
         .from(staffMembers)
-        .where(and(eq(staffMembers.restaurantId, RESTAURANT.id), eq(staffMembers.pinKey, key)));
+        .where(and(eq(staffMembers.restaurantId, restaurantId), eq(staffMembers.pinKey, key)));
       return row ? toStaff(row) : null;
     },
 
     async findStaffById(staffId) {
       await ready();
-      const [row] = await db.select().from(staffMembers).where(eq(staffMembers.id, staffId));
+      const [row] = await db
+        .select()
+        .from(staffMembers)
+        .where(and(eq(staffMembers.id, staffId), eq(staffMembers.restaurantId, restaurantId)));
       return row ? toStaff(row) : null;
     },
 
@@ -446,7 +516,7 @@ export const createPostgresRepository = (
       try {
         await db.batch([
           db.insert(staffMembers).values({ ...member, pinKey: key }),
-          db.insert(events).values(eventRow(event)),
+          db.insert(events).values(eventRow(event, restaurantId)),
         ]);
         return true;
       } catch (error) {
@@ -463,8 +533,8 @@ export const createPostgresRepository = (
           db
             .update(staffMembers)
             .set({ name: member.name, role: member.role, active: member.active, ...(key !== null && { pinKey: key }) })
-            .where(eq(staffMembers.id, member.id)),
-          db.insert(events).values(eventRow(event)),
+            .where(and(eq(staffMembers.id, member.id), eq(staffMembers.restaurantId, restaurantId))),
+          db.insert(events).values(eventRow(event, restaurantId)),
         ]);
         return true;
       } catch (error) {
@@ -478,7 +548,7 @@ export const createPostgresRepository = (
       const [row] = await db
         .select({ failedAttempts: restaurants.staffFailedAttempts, lockedUntil: restaurants.staffLockedUntil })
         .from(restaurants)
-        .where(eq(restaurants.id, RESTAURANT.id));
+        .where(eq(restaurants.id, restaurantId));
       return {
         failedAttempts: row?.failedAttempts ?? 0,
         ...(row?.lockedUntil != null && { lockedUntil: row.lockedUntil }),
@@ -490,7 +560,47 @@ export const createPostgresRepository = (
       await db
         .update(restaurants)
         .set({ staffFailedAttempts: guard.failedAttempts, staffLockedUntil: guard.lockedUntil ?? null })
-        .where(eq(restaurants.id, RESTAURANT.id));
+        .where(eq(restaurants.id, restaurantId));
+    },
+  };
+};
+
+const toRecord = (row: typeof restaurants.$inferSelect): RestaurantRecord => ({
+  id: row.id,
+  slug: row.slug,
+  name: row.name,
+  ownerUserId: row.ownerUserId,
+});
+
+/** Cadastro dos restaurantes no Postgres. Criar um restaurante grava tudo numa transação só. */
+export const createPostgresRegistry = (
+  url: string,
+  { pinKey = defaultStaffPinKey(), db: shared }: { pinKey?: StaffPinKey; db?: Db } = {},
+): RestaurantRegistry => {
+  const db: Db = shared ?? drizzle(url, { schema });
+  const ready = () => ensureSeeded(db, pinKey);
+  return {
+    async findBySlug(slug) {
+      await ready();
+      const [row] = await db.select().from(restaurants).where(eq(restaurants.slug, slug));
+      return row ? toRecord(row) : null;
+    },
+    async listByOwner(ownerUserId) {
+      await ready();
+      const rows = await db.select().from(restaurants).where(eq(restaurants.ownerUserId, ownerUserId));
+      return rows.map(toRecord);
+    },
+    async create(data) {
+      await ready();
+      const rows = restaurantRows(db, data, pinKey);
+      try {
+        await db.batch([rows.restaurant, rows.tables, rows.spots, rows.categories, rows.items, rows.staff]);
+        return true;
+      } catch (error) {
+        // Endereço (slug) já usado por outro restaurante.
+        if (pgError(error).code === "23505") return false;
+        throw error;
+      }
     },
   };
 };
