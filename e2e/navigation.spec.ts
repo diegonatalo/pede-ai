@@ -8,6 +8,7 @@ const PAGES = [
   { path: "/mesa/nao-existe", heading: "Mesa não encontrada" },
   { path: "/garcom", heading: "Garçom" },
   { path: "/cozinha", heading: "Cozinha e bar" },
+  { path: "/gerente", heading: "Gerente" },
 ];
 
 for (const { path, heading } of PAGES) {

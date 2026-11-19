@@ -112,7 +112,7 @@ Todas são opcionais na demonstração.
 pnpm test
 ```
 
-Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) e da cozinha (fila, esgotar item), a camada de dados em memória (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
+Usa [Vitest](https://vitest.dev) e Testing Library. Cobrem a formatação e a leitura de valores em reais (sempre em centavos inteiros), a consistência dos dados de demonstração (ids, categorias, preços, mapa sem sobreposição) as regras de estado (quem pode levar um item, uma comanda ou um chamado para o próximo estado, o que pode ser desfeito e quando a mesa pode fechar) a conta de cada comanda (itens divididos sem perder nem criar centavos, cancelados fora, taxa de serviço e couvert por pessoa, uma mesa com dois casais e uma amiga) os serviços da API (o cliente só mexe na própria comanda, PIN e papel da equipe, cookies assinados), o carrinho, o polling (pausa com a aba escondida), as filas do garçom (confirmar, retirar, chamados, situação das mesas) e da cozinha (colunas por estado, filtro por estação), a divisão de itens em partes, os números do dia (faturamento, ticket por pessoa, tempos médios de preparo e de entrega, mais pedidos), as telas do cliente (código da mesa, comanda, cardápio, carrinho, pedidos, conta com divisão, chamar o garçom) , do garçom (login por PIN, agora, mesas) , da cozinha (fila, esgotar item) e do gerente (números, ajustes de taxa, couvert e confirmação), a camada de dados em memória (abrir e fechar a mesa, código com bloqueio depois de 5 erros, confirmação do primeiro pedido, item esgotado, divisão, chamados e o registro de eventos) e a tela de erro. As telas entram com testes a cada etapa.
 
 Para reexecutar ao salvar: `pnpm test:watch`.
 
@@ -134,7 +134,7 @@ pnpm test:e2e                           # gera o build e testa contra ele
 ```text
 app/              Rotas (página inicial, 404, erros, robots, sitemap, imagem OG)
 app/api/          Route Handlers finos sobre os serviços de lib/api
-components/       Corpo das telas (customer/ para o celular do cliente, waiter/, kitchen/ e staff/ para a equipe, ui/ para estilos comuns)
+components/       Corpo das telas (customer/ para o celular do cliente, waiter/, kitchen/, manager/ e staff/ para a equipe, ui/ para estilos comuns)
 docs/             Textos e imagens do README (readme-kit)
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
@@ -174,7 +174,8 @@ A demonstração guarda os dados na memória do servidor: funciona com um proces
 - [x] Tela da cozinha e do bar: fila em três colunas, filtro por estação e item esgotado.
 - [x] Chamar o garçom e conta pelo celular, com divisão de itens em partes.
 - [ ] Banco de dados (Postgres) para funcionar em vários aparelhos.
-- [ ] Visão do gerente, QR codes para imprimir e mapa do salão.
+- [x] Tela do gerente: salão, números do dia e ajustes (taxa, couvert, confirmação do primeiro pedido).
+- [ ] QR codes para imprimir e mapa do salão.
 
 ### 📄 Créditos e licença
 

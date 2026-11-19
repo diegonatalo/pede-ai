@@ -35,6 +35,7 @@ const item = (id: string, tabId: string, status: ItemStatus, minute: number, pri
   status,
   shares: [{ tabId, parts: 1 }],
   updatedAt: at(minute),
+  timeline: {},
 });
 
 const call = (id: string, tabId: string, status: WaiterCall["status"], minute: number): WaiterCall => ({

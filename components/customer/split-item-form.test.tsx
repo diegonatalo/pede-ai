@@ -27,6 +27,7 @@ const wine: OrderItem = {
   status: "delivered",
   shares: [{ tabId: "a", parts: 1 }],
   updatedAt: "2026-11-18T20:00:00.000Z",
+  timeline: {},
 };
 
 afterEach(() => {

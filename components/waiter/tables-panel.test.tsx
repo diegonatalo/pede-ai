@@ -26,6 +26,7 @@ const snapshot = (tabs: Tab[]): SessionSnapshot => ({
       status: "delivered",
       shares: [{ tabId: "ana", parts: 1 }],
       updatedAt: AT,
+      timeline: {},
     },
   ],
   calls: [],

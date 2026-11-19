@@ -21,6 +21,7 @@ const ticket = (id: string, name: string, status: ItemStatus, note?: string) => 
     status,
     shares: [{ tabId: "ana", parts: 1 }],
     updatedAt: "2026-11-18T20:00:00.000Z",
+    timeline: {},
   } satisfies OrderItem,
 });
 

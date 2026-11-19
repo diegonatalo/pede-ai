@@ -101,6 +101,8 @@ export type Store = {
   /** Todas as mesas abertas, para a cozinha, o garçom e o gerente. */
   listOpenSessions(): Promise<SessionSnapshot[]>;
   closeSession(sessionId: string, actor: Role): Promise<Result<TableSession>>;
+  /** Mesas abertas agora e as abertas desde `since` (inclusive as já fechadas), para o gerente. */
+  listSessionsSince(since: IsoDateTime, actor: Role): Promise<Result<SessionSnapshot[]>>;
 
   createTab(
     input: { sessionId: string; customerName: string; peopleCount: number },
