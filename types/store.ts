@@ -1,5 +1,6 @@
 import type { SharesError } from "@/lib/billing";
 import type {
+  Actor,
   CallReason,
   CallStatus,
   IsoDateTime,
@@ -12,6 +13,8 @@ import type {
   OrderItem,
   Restaurant,
   Role,
+  StaffMember,
+  StaffRole,
   Tab,
   TabStatus,
   Table,
@@ -33,6 +36,7 @@ export type StoreError =
   | "locked"
   /** Outra pessoa mudou a mesma mesa ao mesmo tempo, mais de uma vez seguida. */
   | "conflict"
+  | "wrong_pin"
   | SharesError;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: StoreError };
@@ -49,7 +53,9 @@ export type EventType =
   | "item_availability_changed"
   | "call_created"
   | "call_status_changed"
-  | "restaurant_updated";
+  | "restaurant_updated"
+  | "staff_created"
+  | "staff_updated";
 
 /** Registro de cada mudança. As telas consultam os eventos depois do último `seq` que viram. */
 export type StoreEvent = {
@@ -57,6 +63,8 @@ export type StoreEvent = {
   type: EventType;
   at: IsoDateTime;
   actor: Role;
+  /** Pessoa da equipe que fez a ação, quando foi alguém da equipe com PIN pessoal. */
+  actorStaffId?: string;
   sessionId?: string;
   /** Id da entidade que mudou (comanda, item, chamado...). */
   entityId: string;
@@ -87,45 +95,55 @@ export type RestaurantSettings = Partial<
  */
 export type Store = {
   getRestaurant(): Promise<Restaurant>;
-  updateRestaurant(settings: RestaurantSettings, actor: Role): Promise<Result<Restaurant>>;
+  updateRestaurant(settings: RestaurantSettings, actor: Actor): Promise<Result<Restaurant>>;
   listTables(): Promise<Table[]>;
   listMapSpots(): Promise<MapSpot[]>;
   getMenu(): Promise<Menu>;
-  setItemAvailability(menuItemId: string, available: boolean, actor: Role): Promise<Result<MenuItem>>;
+  setItemAvailability(menuItemId: string, available: boolean, actor: Actor): Promise<Result<MenuItem>>;
 
-  openSession(tableId: string, joinCode: string, actor: Role): Promise<Result<TableSession>>;
+  openSession(tableId: string, joinCode: string, actor: Actor): Promise<Result<TableSession>>;
   /** Código da mesa, para o garçom mostrar ao cliente. */
-  getJoinCode(sessionId: string, actor: Role): Promise<Result<string>>;
+  getJoinCode(sessionId: string, actor: Actor): Promise<Result<string>>;
   /** Confere o código digitado; bloqueia a sessão por alguns minutos depois de muitos erros. */
   verifyJoinCode(sessionId: string, code: string): Promise<Result<true>>;
   getOpenSessionByTable(tableId: string): Promise<TableSession | null>;
   getSessionSnapshot(sessionId: string): Promise<Result<SessionSnapshot>>;
   /** Todas as mesas abertas, para a cozinha, o garçom e o gerente. */
   listOpenSessions(): Promise<SessionSnapshot[]>;
-  closeSession(sessionId: string, actor: Role): Promise<Result<TableSession>>;
+  closeSession(sessionId: string, actor: Actor): Promise<Result<TableSession>>;
   /** Mesas abertas agora e as abertas desde `since` (inclusive as já fechadas), para o gerente. */
-  listSessionsSince(since: IsoDateTime, actor: Role): Promise<Result<SessionSnapshot[]>>;
+  listSessionsSince(since: IsoDateTime, actor: Actor): Promise<Result<SessionSnapshot[]>>;
 
   createTab(
     input: { sessionId: string; customerName: string; peopleCount: number },
-    actor: Role,
+    actor: Actor,
   ): Promise<Result<Tab>>;
-  approveTab(tabId: string, actor: Role): Promise<Result<Tab>>;
-  setTabStatus(tabId: string, to: TabStatus, actor: Role): Promise<Result<Tab>>;
+  approveTab(tabId: string, actor: Actor): Promise<Result<Tab>>;
+  setTabStatus(tabId: string, to: TabStatus, actor: Actor): Promise<Result<Tab>>;
 
   placeOrder(
     input: { tabId: string; lines: OrderLineInput[] },
-    actor: Role,
+    actor: Actor,
   ): Promise<Result<{ order: Order; items: OrderItem[] }>>;
-  setItemStatus(itemId: string, to: ItemStatus, actor: Role): Promise<Result<OrderItem>>;
-  setItemShares(itemId: string, shares: ItemShare[], actor: Role): Promise<Result<OrderItem>>;
+  setItemStatus(itemId: string, to: ItemStatus, actor: Actor): Promise<Result<OrderItem>>;
+  setItemShares(itemId: string, shares: ItemShare[], actor: Actor): Promise<Result<OrderItem>>;
 
   createCall(
     input: { sessionId: string; tabId?: string; reason: CallReason; message?: string },
-    actor: Role,
+    actor: Actor,
   ): Promise<Result<WaiterCall>>;
-  setCallStatus(callId: string, to: CallStatus, actor: Role): Promise<Result<WaiterCall>>;
+  setCallStatus(callId: string, to: CallStatus, actor: Actor): Promise<Result<WaiterCall>>;
 
+  /** Equipe do restaurante, sem os PINs (só o gerente). */
+  listStaff(actor: Actor): Promise<Result<StaffMember[]>>;
+  /** Cadastra a pessoa e devolve o PIN gerado, que só aparece desta vez. */
+  createStaff(input: { name: string; role: StaffRole }, actor: Actor): Promise<Result<{ member: StaffMember; pin: string }>>;
+  resetStaffPin(staffId: string, actor: Actor): Promise<Result<{ member: StaffMember; pin: string }>>;
+  setStaffActive(staffId: string, active: boolean, actor: Actor): Promise<Result<StaffMember>>;
+  /** Acha a pessoa ativa pelo PIN; muitos erros seguidos bloqueiam o login da equipe por alguns minutos. */
+  verifyStaffPin(pin: string): Promise<Result<StaffMember>>;
+  /** A pessoa, para conferir a cada requisição se ela continua ativa. */
+  getStaffMember(staffId: string): Promise<StaffMember | null>;
   /**
    * Eventos depois de `afterSeq` e o último `seq` existente. Com `sessionId`, só os daquela
    * mesa e os gerais (cardápio, configuração).
@@ -159,6 +177,9 @@ export type SessionChanges = {
 
 export type NewEvent = Omit<StoreEvent, "seq">;
 
+/** Erros seguidos de PIN da equipe, para bloquear tentativas em série. */
+export type StaffGuard = { failedAttempts: number; lockedUntil?: number };
+
 export type SessionRef = { openAtTable: string } | { tabId: string } | { itemId: string } | { callId: string };
 
 /**
@@ -190,4 +211,14 @@ export type Repository = {
     event: NewEvent | null,
   ): Promise<boolean>;
   getEvents(afterSeq: number, sessionId?: string): Promise<{ events: StoreEvent[]; lastSeq: number }>;
+
+  listStaff(): Promise<StaffMember[]>;
+  findStaffByPinKey(pinKey: string): Promise<StaffMember | null>;
+  findStaffById(staffId: string): Promise<StaffMember | null>;
+  /** Grava a pessoa nova. `false` se a chave do PIN já é de outra pessoa do restaurante. */
+  insertStaff(member: StaffMember, pinKey: string, event: NewEvent): Promise<boolean>;
+  /** Atualiza a pessoa; `pinKey` nulo mantém o PIN. `false` se o PIN novo já é de outra pessoa. */
+  updateStaff(member: StaffMember, pinKey: string | null, event: NewEvent): Promise<boolean>;
+  getStaffGuard(): Promise<StaffGuard>;
+  saveStaffGuard(guard: StaffGuard): Promise<void>;
 };

@@ -9,13 +9,15 @@ import { cn } from "@/lib/cn";
 type Props = {
   role: StaffRole;
   restaurantName: string;
+  /** Nome de quem entrou com o PIN nesta tela. */
+  personName?: string;
   /** Sem `onToggleSound`, o botão de som não aparece (tela sem avisos sonoros). */
   soundOn?: boolean;
   onToggleSound?: () => void;
   onLoggedOut: () => void;
 };
 
-export const StaffHeader = ({ role, restaurantName, soundOn, onToggleSound, onLoggedOut }: Props) => {
+export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggleSound, onLoggedOut }: Props) => {
   const logout = async () => {
     await apiRequest("/api/staff/logout", { method: "POST", body: { role } });
     onLoggedOut();
@@ -26,7 +28,10 @@ export const StaffHeader = ({ role, restaurantName, soundOn, onToggleSound, onLo
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-2 px-4 py-3">
         <div>
           <p className="text-xs font-semibold tracking-wide text-accent uppercase">{restaurantName}</p>
-          <h1 className="text-lg font-bold">{ROLE_LABEL[role]}</h1>
+          <h1 className="text-lg font-bold">
+            {ROLE_LABEL[role]}
+            {personName && <span className="font-normal text-muted"> · {personName}</span>}
+          </h1>
         </div>
         <div className="flex items-center gap-2">
           {onToggleSound && (

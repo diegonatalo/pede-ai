@@ -1,15 +1,4 @@
-import type { StaffPins } from "@/lib/api/staff";
-
-/** PINs da demonstração, mostrados na página inicial. Em produção, defina as variáveis. */
-export const DEMO_PINS: StaffPins = { kitchen: "1111", waiter: "2222", manager: "3333" };
-
 type Env = Record<string, string | undefined>;
-
-export const readStaffPins = (env: Env): StaffPins => ({
-  kitchen: env.STAFF_PIN_KITCHEN || DEMO_PINS.kitchen,
-  waiter: env.STAFF_PIN_WAITER || DEMO_PINS.waiter,
-  manager: env.STAFF_PIN_MANAGER || DEMO_PINS.manager,
-});
 
 const holder = globalThis as typeof globalThis & { __pedeAiSecret?: string };
 

@@ -4,5 +4,5 @@ import { createStaffTab } from "@/lib/api/staff";
 import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
-  return handleStaff(request, (role, body) => createStaffTab(getStore(), role, body));
+  return handleStaff(request, (actor, body) => createStaffTab(getStore(), actor, body));
 }

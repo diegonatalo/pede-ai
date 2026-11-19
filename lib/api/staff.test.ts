@@ -1,26 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PINS } from "@/lib/api/config";
 import type { StaffIdentity } from "@/lib/api/identity";
 import type { ApiResult } from "@/lib/api/result";
 import {
   approveTab,
   closeTable,
+  createTeamMember,
   createStaffTab,
   getManagerReport,
   getStaffFeed,
   getStaffOverview,
+  getTeam,
   openTable,
   placeStaffOrder,
-  resolveStaffRole,
+  resetTeamPin,
+  resolveStaffActor,
   setAvailability,
   setStaffCallStatus,
   setStaffItemShares,
   setStaffItemStatus,
   setStaffTabStatus,
+  setTeamActive,
   staffLogin,
   staffLogout,
   updateSettings,
 } from "@/lib/api/staff";
+import { DEMO_PINS } from "@/lib/seed-data";
 import { createMemoryStore } from "@/lib/store/memory";
 import type { OrderItem, Tab, TableSession } from "@/types/domain";
 import type { SessionSnapshot } from "@/types/store";
@@ -29,31 +33,73 @@ const NOW = Date.parse("2026-11-18T20:00:00.000Z");
 const errorOf = (result: ApiResult) => (result.body as { error?: string }).error ?? "ok";
 
 describe("login da equipe", () => {
-  it("entra com o PIN certo e acumula papéis no mesmo navegador", () => {
-    const waiter = staffLogin(null, { role: "waiter", pin: DEMO_PINS.waiter }, DEMO_PINS, NOW);
-    expect(waiter.staff).toMatchObject({ roles: ["waiter"] });
-    const both = staffLogin(waiter.staff as StaffIdentity, { role: "kitchen", pin: "1111" }, DEMO_PINS, NOW);
-    expect(both.staff).toMatchObject({ roles: ["waiter", "kitchen"] });
+  const seatsOf = (result: ApiResult) => (result.staff as StaffIdentity).seats;
+
+  it("entra com o PIN pessoal e guarda quem entrou em cada tela", async () => {
+    const store = createMemoryStore();
+    const waiter = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.waiter }, NOW);
+    expect(waiter.body).toEqual({ roles: ["waiter"], name: "Garçom da demo" });
+    expect(seatsOf(waiter)).toEqual({ waiter: { id: "staff-demo-waiter", name: "Garçom da demo" } });
+    const both = await staffLogin(store, waiter.staff as StaffIdentity, { role: "kitchen", pin: DEMO_PINS.kitchen }, NOW);
+    expect(Object.keys(seatsOf(both)).sort()).toEqual(["kitchen", "waiter"]);
   });
 
-  it("recusa PIN errado e papel de cliente", () => {
-    expect(errorOf(staffLogin(null, { role: "waiter", pin: "1111" }, DEMO_PINS, NOW))).toBe("wrong_pin");
-    expect(errorOf(staffLogin(null, { role: "waiter", pin: "22222" }, DEMO_PINS, NOW))).toBe("wrong_pin");
-    expect(errorOf(staffLogin(null, { role: "customer", pin: "x" }, DEMO_PINS, NOW))).toBe("invalid_input");
+  it("deixa o gerente usar a tela do garçom, mas não o garçom usar a do gerente", async () => {
+    const store = createMemoryStore();
+    const manager = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.manager }, NOW);
+    expect(seatsOf(manager).waiter).toEqual({ id: "staff-demo-manager", name: "Gerente da demo" });
+    expect(errorOf(await staffLogin(store, null, { role: "manager", pin: DEMO_PINS.waiter }, NOW))).toBe("wrong_screen");
   });
 
-  it("sai de um papel ou de todos", () => {
-    const identity: StaffIdentity = { roles: ["waiter", "kitchen"], exp: NOW + 1000 };
-    expect(staffLogout(identity, { role: "kitchen" }).staff).toMatchObject({ roles: ["waiter"] });
+  it("recusa PIN errado e papel de cliente", async () => {
+    const store = createMemoryStore();
+    expect(errorOf(await staffLogin(store, null, { role: "waiter", pin: "9999" }, NOW))).toBe("wrong_pin");
+    expect(errorOf(await staffLogin(store, null, { role: "customer", pin: "2222" }, NOW))).toBe("invalid_input");
+  });
+
+  it("sai de uma tela ou de todas", () => {
+    const identity: StaffIdentity = {
+      seats: { waiter: { id: "a", name: "Ana" }, kitchen: { id: "b", name: "Bia" } },
+      exp: NOW + 1000,
+    };
+    expect(staffLogout(identity, { role: "kitchen" }).staff).toEqual({ seats: { waiter: { id: "a", name: "Ana" } }, exp: NOW + 1000 });
     expect(staffLogout(identity, {}).staff).toBeNull();
   });
 
-  it("confere o papel pedido contra o cookie", () => {
-    const identity: StaffIdentity = { roles: ["kitchen"], exp: NOW + 1000 };
-    expect(resolveStaffRole(identity, "kitchen")).toBe("kitchen");
-    expect(errorOf(resolveStaffRole(identity, "manager") as ApiResult)).toBe("not_logged_in");
-    expect(errorOf(resolveStaffRole(null, "kitchen") as ApiResult)).toBe("not_logged_in");
-    expect(errorOf(resolveStaffRole(identity, "customer") as ApiResult)).toBe("invalid_input");
+  it("confere a tela pedida contra o cookie e devolve quem está nela", () => {
+    const identity: StaffIdentity = { seats: { kitchen: { id: "c1", name: "Caio" } }, exp: NOW + 1000 };
+    expect(resolveStaffActor(identity, "kitchen")).toEqual({ role: "kitchen", staffId: "c1", name: "Caio" });
+    expect(errorOf(resolveStaffActor(identity, "manager") as ApiResult)).toBe("not_logged_in");
+    expect(errorOf(resolveStaffActor(null, "kitchen") as ApiResult)).toBe("not_logged_in");
+    expect(errorOf(resolveStaffActor(identity, "customer") as ApiResult)).toBe("invalid_input");
+  });
+});
+
+describe("equipe", () => {
+  const manager = { role: "manager" as const, staffId: "staff-demo-manager", name: "Gerente da demo" };
+
+  it("o gerente cadastra, troca o PIN e desativa; o garçom não", async () => {
+    const store = createMemoryStore();
+    expect(errorOf(await getTeam(store, "waiter"))).toBe("forbidden");
+    const created = await createTeamMember(store, manager, { name: "Bruno", role: "waiter" });
+    const { member, pin } = created.body as { member: { id: string }; pin: string };
+    expect(pin).toMatch(/^\d{6}$/);
+    expect(errorOf(await createTeamMember(store, manager, { name: "Bruno" }))).toBe("invalid_input");
+
+    const login = await staffLogin(store, null, { role: "waiter", pin }, NOW);
+    expect((login.body as { name: string }).name).toBe("Bruno");
+
+    const reset = await resetTeamPin(store, manager, member.id);
+    expect((reset.body as { pin: string }).pin).not.toBe(pin);
+    expect(errorOf(await setTeamActive(store, manager, member.id, { active: "não" }))).toBe("invalid_input");
+    expect((await setTeamActive(store, manager, member.id, { active: false })).status).toBe(200);
+    expect(((await getTeam(store, manager)).body as { active: boolean }[]).filter((entry) => !entry.active)).toHaveLength(1);
+  });
+
+  it("mostra no painel quem está na tela", async () => {
+    const store = createMemoryStore();
+    const overview = await getStaffOverview(store, { role: "waiter", staffId: "s1", name: "Bruno" });
+    expect((overview.body as { me: unknown }).me).toEqual({ name: "Bruno", role: "waiter", staffId: "s1" });
   });
 });
 

@@ -1,4 +1,4 @@
-import type { MapSpot, MenuCategory, MenuItem, Restaurant, Table } from "@/types/domain";
+import type { MapSpot, MenuCategory, MenuItem, Restaurant, StaffMember, StaffRole, Table } from "@/types/domain";
 
 /**
  * Restaurante de demonstração. É o estado inicial do adaptador em memória e o seed do banco.
@@ -80,3 +80,24 @@ export const MENU_ITEMS: MenuItem[] = [
   item("vinho-taca", "drinks", "Vinho tinto (taça)", "Montepulciano d'Abruzzo, 150 ml.", 2800, "bar"),
   item("vinho-garrafa", "drinks", "Vinho tinto (garrafa)", "Montepulciano d'Abruzzo, 750 ml.", 12900, "bar"),
 ];
+
+/** PINs públicos da demonstração, mostrados na página inicial. */
+export const DEMO_PINS: Record<StaffRole, string> = { kitchen: "1111", waiter: "2222", manager: "3333" };
+
+/** Equipe da demonstração: uma pessoa por papel, com o PIN público. Não pode ser desativada. */
+export const DEMO_STAFF: (StaffMember & { pin: string })[] = (
+  [
+    ["staff-demo-kitchen", "Cozinha da demo", "kitchen"],
+    ["staff-demo-waiter", "Garçom da demo", "waiter"],
+    ["staff-demo-manager", "Gerente da demo", "manager"],
+  ] as const
+).map(([id, name, role]) => ({
+  id,
+  restaurantId: r,
+  name,
+  role,
+  active: true,
+  system: true,
+  createdAt: "2026-11-19T00:00:00.000Z",
+  pin: DEMO_PINS[role],
+}));

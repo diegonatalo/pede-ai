@@ -15,7 +15,7 @@ const url = process.env.TEST_DATABASE_URL;
 describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", () => {
   beforeEach(async () => {
     const sql = neon(url as string);
-    await sql`TRUNCATE events, waiter_calls, order_items, orders, tabs, table_sessions,
+    await sql`TRUNCATE events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
       menu_items, menu_categories, map_spots, dining_tables, restaurants RESTART IDENTITY CASCADE`;
   });
 

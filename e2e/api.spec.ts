@@ -14,7 +14,7 @@ test("cliente pede, cozinha prepara, garçom entrega e a mesa fecha", async ({ p
   // O garçom e a cozinha entram no mesmo navegador (a demo abre os dois).
   await staffLogin(staff, "waiter");
   await staffLogin(staff, "kitchen");
-  expect(await (await staff.get("/api/staff/me")).json()).toEqual({ roles: ["waiter", "kitchen"] });
+  expect(await (await staff.get("/api/staff/me")).json()).toEqual({ roles: ["kitchen", "waiter"] });
 
   const opened = await staff.post("/api/staff/sessions?role=waiter", json({ tableId: "mesa-6" }));
   expect(opened.ok()).toBe(true);

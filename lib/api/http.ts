@@ -5,11 +5,13 @@ import {
   parseStaffIdentity,
   type CustomerIdentity,
   type StaffIdentity,
+  type StaffActor,
   type StaffRole,
 } from "@/lib/api/identity";
 import { error, type ApiResult } from "@/lib/api/result";
-import { resolveStaffRole } from "@/lib/api/staff";
+import { resolveStaffActor } from "@/lib/api/staff";
 import { signToken, verifyToken } from "@/lib/signed-token";
+import { getStore } from "@/lib/store";
 
 /** Ponte entre os Route Handlers e os serviços de `lib/api`: cookies, JSON e respostas. */
 
@@ -100,17 +102,32 @@ export const handleStaffSession = async (
   return respond(await run(await readStaff(request), body));
 };
 
-/** Rota da equipe: o papel vem de `?role=` e precisa ter entrado com PIN. */
+/**
+ * Rota da equipe: a tela vem de `?role=`, e alguém da equipe precisa ter entrado nela com PIN
+ * e continuar ativo (quem foi desativado perde o acesso na hora, não quando o cookie vence).
+ */
 export const handleStaff = async (
   request: NextRequest,
-  run: (role: StaffRole, body: unknown) => Promise<ApiResult> | ApiResult,
+  run: (actor: StaffActor, body: unknown) => Promise<ApiResult> | ApiResult,
   options: Options = {},
 ) =>
   handleStaffSession(
     request,
-    (identity, body) => {
-      const role = resolveStaffRole(identity, request.nextUrl.searchParams.get("role"));
-      return typeof role === "string" ? run(role, body) : role;
+    async (identity, body) => {
+      const actor = resolveStaffActor(identity, request.nextUrl.searchParams.get("role"));
+      if ("status" in (actor as object)) return actor as ApiResult;
+      const resolved = actor as Exclude<StaffActor, string>;
+      const member = await getStore().getStaffMember(resolved.staffId);
+      if (!member?.active) return error("not_logged_in", { staff: withoutSeat(identity, resolved.role) });
+      return run(resolved, body);
     },
     options,
   );
+
+/** Tira uma tela do cookie da equipe (`null` apaga o cookie se não sobrar nenhuma). */
+const withoutSeat = (identity: StaffIdentity | null, role: StaffRole): StaffIdentity | null => {
+  if (!identity) return null;
+  const seats = { ...identity.seats };
+  delete seats[role];
+  return Object.keys(seats).length > 0 ? { seats, exp: identity.exp } : null;
+};

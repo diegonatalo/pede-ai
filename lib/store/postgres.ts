@@ -3,13 +3,15 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
-import { MAP_SPOTS, MENU_CATEGORIES, MENU_ITEMS, RESTAURANT, TABLES } from "@/lib/seed-data";
+import { DEMO_STAFF, MAP_SPOTS, MENU_CATEGORIES, MENU_ITEMS, RESTAURANT, TABLES } from "@/lib/seed-data";
+import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
   MapSpot,
   MenuItem,
   Order,
   OrderItem,
   Restaurant,
+  StaffMember,
   Tab,
   Table,
   TableSession,
@@ -26,6 +28,7 @@ const {
   orderItems,
   orders,
   restaurants,
+  staffMembers,
   tableSessions,
   tabs,
   waiterCalls,
@@ -36,7 +39,23 @@ type Batch = [BatchItem<"pg">, ...BatchItem<"pg">[]];
 
 // --- linhas do banco ↔ domínio (null no banco = campo ausente no domínio) ---
 
-const toRestaurant = (row: typeof restaurants.$inferSelect): Restaurant => ({ ...row });
+const toRestaurant = (row: typeof restaurants.$inferSelect): Restaurant => ({
+  id: row.id,
+  name: row.name,
+  serviceFeePercent: row.serviceFeePercent,
+  couvertCents: row.couvertCents,
+  requireFirstOrderApproval: row.requireFirstOrderApproval,
+});
+
+const toStaff = (row: typeof staffMembers.$inferSelect): StaffMember => ({
+  id: row.id,
+  restaurantId: row.restaurantId,
+  name: row.name,
+  role: row.role as StaffMember["role"],
+  active: row.active,
+  system: row.system,
+  createdAt: row.createdAt,
+});
 
 const toTable = (row: typeof diningTables.$inferSelect): Table => ({
   id: row.id,
@@ -125,17 +144,21 @@ const toCall = (row: typeof waiterCalls.$inferSelect): WaiterCall => ({
   createdAt: row.createdAt,
 });
 
-const toEvent = ({ sessionId, ...row }: typeof events.$inferSelect): StoreEvent => ({
-  ...row,
+const toEvent = (row: typeof events.$inferSelect): StoreEvent => ({
+  seq: row.seq,
   type: row.type as StoreEvent["type"],
+  at: row.at,
   actor: row.actor as StoreEvent["actor"],
-  ...(sessionId !== null && { sessionId }),
+  ...(row.actorStaffId !== null && { actorStaffId: row.actorStaffId }),
+  ...(row.sessionId !== null && { sessionId: row.sessionId }),
+  entityId: row.entityId,
 });
 
 const eventRow = (event: NewEvent): typeof events.$inferInsert => ({
   type: event.type,
   at: event.at,
   actor: event.actor,
+  actorStaffId: event.actorStaffId ?? null,
   entityId: event.entityId,
   sessionId: event.sessionId ?? null,
 });
@@ -162,8 +185,11 @@ const pgError = (error: unknown): { code?: string; message: string } => {
   return { code, message: messages.join(" | ") };
 };
 
-/** Grava os dados de demonstração na primeira vez (sem mexer no que já existe). */
-const seed = async (db: Db) => {
+/**
+ * Grava os dados de demonstração na primeira vez (sem mexer no que já existe). A equipe da demo
+ * é regravada sempre, para a chave do PIN acompanhar a chave do app se ela mudar.
+ */
+const seed = async (db: Db, pinKey: StaffPinKey) => {
   await db.batch([
     db.insert(restaurants).values(RESTAURANT).onConflictDoNothing(),
     db.insert(diningTables).values(TABLES.map((table, position) => ({ ...table, position }))).onConflictDoNothing(),
@@ -173,6 +199,13 @@ const seed = async (db: Db) => {
       .onConflictDoNothing(),
     db.insert(menuCategories).values(MENU_CATEGORIES).onConflictDoNothing(),
     db.insert(menuItems).values(MENU_ITEMS.map((item, position) => ({ ...item, position }))).onConflictDoNothing(),
+    db
+      .insert(staffMembers)
+      .values(DEMO_STAFF.map(({ pin, ...member }) => ({ ...member, pinKey: pinKey(member.restaurantId, pin) })))
+      .onConflictDoUpdate({
+        target: staffMembers.id,
+        set: { pinKey: sql.raw('excluded."pin_key"'), active: true, system: true },
+      }),
   ]);
 };
 
@@ -180,11 +213,14 @@ const seed = async (db: Db) => {
  * Repositório no Postgres (Neon, pelo driver HTTP). Cada operação é uma requisição só:
  * leituras em `batch`, e cada gravação num `batch`, que o Neon roda como uma transação.
  */
-export const createPostgresRepository = (url: string): Repository => {
+export const createPostgresRepository = (
+  url: string,
+  { pinKey = defaultStaffPinKey() }: { pinKey?: StaffPinKey } = {},
+): Repository => {
   const db: Db = drizzle(url, { schema });
   let seeded: Promise<void> | null = null;
   const ready = () => {
-    seeded ??= seed(db).catch((error: unknown) => {
+    seeded ??= seed(db, pinKey).catch((error: unknown) => {
       seeded = null;
       throw error;
     });
@@ -378,6 +414,83 @@ export const createPostgresRepository = (url: string): Repository => {
         db.select({ lastSeq: max(events.seq) }).from(events),
       ]);
       return { events: rows.map(toEvent), lastSeq: last?.lastSeq ?? 0 };
+    },
+
+    async listStaff() {
+      await ready();
+      const rows = await db
+        .select()
+        .from(staffMembers)
+        .where(eq(staffMembers.restaurantId, RESTAURANT.id))
+        .orderBy(asc(staffMembers.n));
+      return rows.map(toStaff);
+    },
+
+    async findStaffByPinKey(key) {
+      await ready();
+      const [row] = await db
+        .select()
+        .from(staffMembers)
+        .where(and(eq(staffMembers.restaurantId, RESTAURANT.id), eq(staffMembers.pinKey, key)));
+      return row ? toStaff(row) : null;
+    },
+
+    async findStaffById(staffId) {
+      await ready();
+      const [row] = await db.select().from(staffMembers).where(eq(staffMembers.id, staffId));
+      return row ? toStaff(row) : null;
+    },
+
+    async insertStaff(member, key, event) {
+      await ready();
+      try {
+        await db.batch([
+          db.insert(staffMembers).values({ ...member, pinKey: key }),
+          db.insert(events).values(eventRow(event)),
+        ]);
+        return true;
+      } catch (error) {
+        // Índice "um PIN por restaurante": o PIN sorteado já é de outra pessoa.
+        if (pgError(error).code === "23505") return false;
+        throw error;
+      }
+    },
+
+    async updateStaff(member, key, event) {
+      await ready();
+      try {
+        await db.batch([
+          db
+            .update(staffMembers)
+            .set({ name: member.name, role: member.role, active: member.active, ...(key !== null && { pinKey: key }) })
+            .where(eq(staffMembers.id, member.id)),
+          db.insert(events).values(eventRow(event)),
+        ]);
+        return true;
+      } catch (error) {
+        if (pgError(error).code === "23505") return false;
+        throw error;
+      }
+    },
+
+    async getStaffGuard() {
+      await ready();
+      const [row] = await db
+        .select({ failedAttempts: restaurants.staffFailedAttempts, lockedUntil: restaurants.staffLockedUntil })
+        .from(restaurants)
+        .where(eq(restaurants.id, RESTAURANT.id));
+      return {
+        failedAttempts: row?.failedAttempts ?? 0,
+        ...(row?.lockedUntil != null && { lockedUntil: row.lockedUntil }),
+      };
+    },
+
+    async saveStaffGuard(guard) {
+      await ready();
+      await db
+        .update(restaurants)
+        .set({ staffFailedAttempts: guard.failedAttempts, staffLockedUntil: guard.lockedUntil ?? null })
+        .where(eq(restaurants.id, RESTAURANT.id));
     },
   };
 };

@@ -1,4 +1,7 @@
+import { roleOf, staffIdOf } from "@/lib/actor";
+import { isStaffRole } from "@/lib/api/identity";
 import { validateShares } from "@/lib/billing";
+import { defaultStaffPinKey, generateStaffPin, isStaffPin, type StaffPinKey } from "@/lib/staff-pin";
 import {
   LIMITS,
   STAFF,
@@ -15,7 +18,18 @@ import {
   checkTabTransition,
   initialItemStatus,
 } from "@/lib/transitions";
-import type { MenuItem, Order, OrderItem, Role, Tab, Table, TableSession, WaiterCall } from "@/types/domain";
+import type {
+  Actor,
+  MenuItem,
+  Order,
+  OrderItem,
+  Role,
+  StaffMember,
+  Tab,
+  Table,
+  TableSession,
+  WaiterCall,
+} from "@/types/domain";
 import type {
   EventType,
   NewEvent,
@@ -32,14 +46,25 @@ export type EngineOptions = {
   /** Relógio injetável, para os testes. */
   now?: () => Date;
   newId?: () => string;
+  /** PIN novo da equipe (injetável nos testes). */
+  newPin?: () => string;
+  /** Chave guardada no lugar do PIN; precisa ser a mesma do repositório (ver `lib/staff-pin.ts`). */
+  pinKey?: StaffPinKey;
 };
 
 /** Quantas vezes um comando relê a mesa e tenta de novo quando outra pessoa gravou antes. */
 const MAX_ATTEMPTS = 3;
 
+/** Erros seguidos de PIN da equipe antes de bloquear o login, e por quanto tempo. */
+const STAFF_PIN_ATTEMPTS = 20;
+const STAFF_PIN_LOCK_MS = 2 * 60_000;
+
+/** Quantos PINs sortear antes de desistir quando o sorteado já é de outra pessoa. */
+const PIN_DRAWS = 8;
+
 const ok = <T>(value: T): Result<T> => ({ ok: true, value: structuredClone(value) });
 const fail = <T>(error: StoreError): Result<T> => ({ ok: false, error });
-const can = (role: Role, allowed: readonly Role[]) => allowed.includes(role);
+const can = (actor: Actor, allowed: readonly Role[]) => allowed.includes(roleOf(actor));
 
 /** Resultado de um comando sobre a mesa: o que devolver e, se deu certo, o que gravar. */
 type Outcome<T> =
@@ -53,16 +78,25 @@ type Outcome<T> =
  */
 export const createStore = (
   repo: Repository,
-  { now = () => new Date(), newId = () => crypto.randomUUID() }: EngineOptions = {},
+  {
+    now = () => new Date(),
+    newId = () => crypto.randomUUID(),
+    newPin = () => generateStaffPin(),
+    pinKey = defaultStaffPinKey(),
+  }: EngineOptions = {},
 ): Store => {
   const iso = () => now().toISOString();
-  const event = (type: EventType, actor: Role, entityId: string, sessionId?: string): NewEvent => ({
-    type,
-    at: iso(),
-    actor,
-    entityId,
-    ...(sessionId !== undefined && { sessionId }),
-  });
+  const event = (type: EventType, actor: Actor, entityId: string, sessionId?: string): NewEvent => {
+    const actorStaffId = staffIdOf(actor);
+    return {
+      type,
+      at: iso(),
+      actor: roleOf(actor),
+      ...(actorStaffId !== undefined && { actorStaffId }),
+      entityId,
+      ...(sessionId !== undefined && { sessionId }),
+    };
+  };
 
   const snapshot = (record: SessionRecord, tables: Table[]): SessionSnapshot => {
     const table = tables.find((entry) => entry.id === record.session.tableId);
@@ -93,7 +127,7 @@ export const createStore = (
     getRestaurant: () => repo.getRestaurant(),
 
     async updateRestaurant(settings, actor) {
-      if (actor !== "manager") return fail("forbidden");
+      if (roleOf(actor) !== "manager") return fail("forbidden");
       const { serviceFeePercent, couvertCents, requireFirstOrderApproval } = settings;
       if (serviceFeePercent !== undefined && !isIntInRange(serviceFeePercent, 0, LIMITS.serviceFeePercent))
         return fail("invalid_input");
@@ -190,7 +224,7 @@ export const createStore = (
     },
 
     async listSessionsSince(since, actor) {
-      if (actor !== "manager") return fail("forbidden");
+      if (roleOf(actor) !== "manager") return fail("forbidden");
       if (Number.isNaN(Date.parse(since))) return fail("invalid_input");
       const [records, tables] = await Promise.all([repo.listSessions({ since }), repo.listTables()]);
       return ok(records.map((record) => snapshot(record, tables)));
@@ -252,7 +286,7 @@ export const createStore = (
         const tab = record.tabs.find((entry) => entry.id === tabId);
         if (!tab) return { result: fail("not_found") };
         if (!requireOpen(record)) return { result: fail("session_closed") };
-        const check = checkTabTransition(tab.status, to, actor);
+        const check = checkTabTransition(tab.status, to, roleOf(actor));
         if (!check.ok) return { result: fail(check.error) };
         const updated: Tab = { ...tab, status: to };
         return { result: ok(updated), changes: { tabs: [updated] }, event: event("tab_status_changed", actor, tabId, record.session.id) };
@@ -313,7 +347,7 @@ export const createStore = (
         const item = record.items.find((entry) => entry.id === itemId);
         if (!item) return { result: fail("not_found") };
         if (!requireOpen(record)) return { result: fail("session_closed") };
-        const check = checkItemTransition(item.status, to, actor);
+        const check = checkItemTransition(item.status, to, roleOf(actor));
         if (!check.ok) return { result: fail(check.error) };
         const at = iso();
         const updated: OrderItem = { ...item, status: to, updatedAt: at, timeline: { ...item.timeline, [to]: at } };
@@ -367,11 +401,90 @@ export const createStore = (
       return mutate(await repo.findSessionId({ callId }), (record) => {
         const call = record.calls.find((entry) => entry.id === callId);
         if (!call) return { result: fail("not_found") };
-        const check = checkCallTransition(call.status, to, actor);
+        const check = checkCallTransition(call.status, to, roleOf(actor));
         if (!check.ok) return { result: fail(check.error) };
         const updated: WaiterCall = { ...call, status: to };
         return { result: ok(updated), changes: { calls: [updated] }, event: event("call_status_changed", actor, callId, record.session.id) };
       });
+    },
+
+    async listStaff(actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      return ok(await repo.listStaff());
+    },
+
+    async createStaff(input, actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      const name = cleanText(input.name, LIMITS.customerName);
+      if (!name || !isStaffRole(input.role)) return fail("invalid_input");
+      const restaurant = await repo.getRestaurant();
+      const member: StaffMember = {
+        id: newId(),
+        restaurantId: restaurant.id,
+        name,
+        role: input.role,
+        active: true,
+        system: false,
+        createdAt: iso(),
+      };
+      // O PIN sorteado pode já ser de outra pessoa do restaurante: sorteia de novo.
+      for (let draw = 0; draw < PIN_DRAWS; draw += 1) {
+        const pin = newPin();
+        if (await repo.insertStaff(member, pinKey(restaurant.id, pin), event("staff_created", actor, member.id))) {
+          return ok({ member, pin });
+        }
+      }
+      return fail("conflict");
+    },
+
+    async resetStaffPin(staffId, actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      const member = (await repo.listStaff()).find((entry) => entry.id === staffId);
+      if (!member) return fail("not_found");
+      if (member.system) return fail("forbidden");
+      for (let draw = 0; draw < PIN_DRAWS; draw += 1) {
+        const pin = newPin();
+        if (await repo.updateStaff(member, pinKey(member.restaurantId, pin), event("staff_updated", actor, member.id))) {
+          return ok({ member, pin });
+        }
+      }
+      return fail("conflict");
+    },
+
+    async setStaffActive(staffId, active, actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      if (typeof active !== "boolean") return fail("invalid_input");
+      const member = (await repo.listStaff()).find((entry) => entry.id === staffId);
+      if (!member) return fail("not_found");
+      // Pessoas da demonstração não podem ser desativadas: a demo pública quebraria para todo mundo.
+      if (member.system) return fail("forbidden");
+      // Quem está usando a tela não desativa a si mesmo (ficaria sem acesso no meio do trabalho).
+      if (!active && staffIdOf(actor) === staffId) return fail("forbidden");
+      const updated: StaffMember = { ...member, active };
+      await repo.updateStaff(updated, null, event("staff_updated", actor, member.id));
+      return ok(updated);
+    },
+
+    getStaffMember: (staffId) => repo.findStaffById(staffId),
+
+    async verifyStaffPin(pin) {
+      if (!isStaffPin(pin)) return fail("wrong_pin");
+      const guard = await repo.getStaffGuard();
+      const time = now().getTime();
+      if (guard.lockedUntil !== undefined && guard.lockedUntil > time) return fail("locked");
+      const restaurant = await repo.getRestaurant();
+      const member = await repo.findStaffByPinKey(pinKey(restaurant.id, pin));
+      if (member?.active) {
+        if (guard.failedAttempts > 0 || guard.lockedUntil !== undefined) await repo.saveStaffGuard({ failedAttempts: 0 });
+        return ok(member);
+      }
+      const failedAttempts = guard.failedAttempts + 1;
+      if (failedAttempts >= STAFF_PIN_ATTEMPTS) {
+        await repo.saveStaffGuard({ failedAttempts: 0, lockedUntil: time + STAFF_PIN_LOCK_MS });
+        return fail("locked");
+      }
+      await repo.saveStaffGuard({ failedAttempts });
+      return fail("wrong_pin");
     },
 
     async getEvents(afterSeq, sessionId) {

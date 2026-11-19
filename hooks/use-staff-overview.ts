@@ -14,6 +14,8 @@ export type StaffOverview = {
   restaurant: Restaurant;
   joinCodes: Record<string, string>;
   lastSeq: number;
+  /** Quem está nesta tela (nulo só em testes antigos). */
+  me: { name: string; role: StaffRole; staffId: string } | null;
 };
 
 export type StaffState =

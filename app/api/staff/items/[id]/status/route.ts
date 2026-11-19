@@ -5,5 +5,5 @@ import { getStore } from "@/lib/store";
 
 export async function POST(request: NextRequest, ctx: RouteContext<"/api/staff/items/[id]/status">) {
   const { id: itemId } = await ctx.params;
-  return handleStaff(request, (role, body) => setStaffItemStatus(getStore(), role, itemId, body));
+  return handleStaff(request, (actor, body) => setStaffItemStatus(getStore(), actor, itemId, body));
 }

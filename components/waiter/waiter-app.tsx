@@ -58,6 +58,7 @@ export const WaiterApp = () => {
       <StaffHeader
         role="waiter"
         restaurantName={data.restaurant.name}
+        personName={data.me?.name}
         soundOn={soundOn}
         onToggleSound={toggleSound}
         onLoggedOut={() => void refresh()}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isStaffRole, parseCustomerIdentity, parseStaffIdentity } from "@/lib/api/identity";
+import { isStaffRole, parseCustomerIdentity, parseStaffIdentity, rolesOf } from "@/lib/api/identity";
 
 const NOW = 1_000_000;
 
@@ -22,17 +22,28 @@ describe("parseCustomerIdentity", () => {
 });
 
 describe("parseStaffIdentity", () => {
-  it("aceita papéis da equipe e tira repetidos", () => {
-    expect(parseStaffIdentity({ roles: ["waiter", "kitchen", "waiter"], exp: NOW + 1 }, NOW)).toEqual({
-      roles: ["waiter", "kitchen"],
-      exp: NOW + 1,
-    });
+  it("aceita quem entrou em cada tela", () => {
+    const value = { seats: { waiter: { id: "a", name: "Ana" }, kitchen: { id: "b", name: "Bia" } }, exp: NOW + 1 };
+    expect(parseStaffIdentity(value, NOW)).toEqual(value);
   });
 
-  it("recusa cliente como papel, lista vazia e cookie vencido", () => {
-    expect(parseStaffIdentity({ roles: ["customer"], exp: NOW + 1 }, NOW)).toBeNull();
-    expect(parseStaffIdentity({ roles: [], exp: NOW + 1 }, NOW)).toBeNull();
-    expect(parseStaffIdentity({ roles: ["waiter"], exp: NOW - 1 }, NOW)).toBeNull();
+  it("recusa tela de cliente, pessoa malformada, nenhuma tela e cookie vencido", () => {
+    expect(parseStaffIdentity({ seats: { customer: { id: "a", name: "Ana" } }, exp: NOW + 1 }, NOW)).toBeNull();
+    expect(parseStaffIdentity({ seats: { waiter: { id: 1, name: "Ana" } }, exp: NOW + 1 }, NOW)).toBeNull();
+    expect(parseStaffIdentity({ seats: {}, exp: NOW + 1 }, NOW)).toBeNull();
+    expect(parseStaffIdentity({ seats: { waiter: { id: "a", name: "Ana" } }, exp: NOW - 1 }, NOW)).toBeNull();
+    // Cookie do formato antigo (só papéis) deixa de valer: a pessoa entra de novo com o PIN.
+    expect(parseStaffIdentity({ roles: ["waiter"], exp: NOW + 1 }, NOW)).toBeNull();
+  });
+});
+
+describe("rolesOf", () => {
+  it("lista as telas em que alguém entrou, na ordem fixa", () => {
+    expect(rolesOf({ seats: { manager: { id: "m", name: "M" }, kitchen: { id: "k", name: "K" } }, exp: NOW + 1 })).toEqual([
+      "kitchen",
+      "manager",
+    ]);
+    expect(rolesOf(null)).toEqual([]);
   });
 });
 
