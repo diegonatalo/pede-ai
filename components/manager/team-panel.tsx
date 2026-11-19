@@ -19,7 +19,7 @@ const ROLES: StaffRole[] = ["waiter", "kitchen", "manager"];
 
 /**
  * Equipe do restaurante: cadastrar quem trabalha, ver o PIN gerado uma vez só, trocar o PIN
- * e desativar quem saiu. A equipe da demonstração aparece, mas não pode ser alterada.
+ * e desativar quem saiu. Pessoas fixas do sistema aparecem, mas não podem ser alteradas.
  */
 export const TeamPanel = ({ meId }: Props) => {
   const apiRequest = useApi();
@@ -151,12 +151,12 @@ export const TeamPanel = ({ meId }: Props) => {
                 <p className="text-sm text-muted">
                   {ROLE_LABEL[member.role]}
                   {!member.active && " · desativado"}
-                  {member.system && " · demonstração"}
+                  {member.system && " · fixo"}
                   {member.id === ownerStaffIdFor(member.restaurantId) && " · dono"}
                 </p>
               </div>
               {member.system ? (
-                <p className="text-sm text-muted">PIN público da demo; não pode ser alterado.</p>
+                <p className="text-sm text-muted">PIN fixo; não pode ser alterado.</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {member.active && (

@@ -1,5 +1,4 @@
-import { expect, test } from "@playwright/test";
-import { collectErrors, PINS, title } from "./fixtures";
+import { collectErrors, expect, test, title } from "./fixtures";
 
 // Conta e endereço novos a cada execução: os testes podem rodar de novo contra o mesmo servidor.
 const unique = () => `${Date.now() % 1e8}${Math.floor(Math.random() * 1e3)}`;
@@ -7,6 +6,7 @@ const unique = () => `${Date.now() % 1e8}${Math.floor(Math.random() * 1e3)}`;
 test("o dono cadastra o restaurante, entra como gerente pela conta e a equipe usa o PIN dele", async ({
   page,
   browser,
+  restaurant,
 }) => {
   const id = unique();
   const slug = `cantina-${id}`;
@@ -47,18 +47,13 @@ test("o dono cadastra o restaurante, entra como gerente pela conta e a equipe us
   // Há erro esperado no console: o 409 do endereço repetido.
   expect(errors.filter((message) => !message.includes("409"))).toEqual([]);
 
-  // Num aparelho do restaurante: o PIN da demo não entra; o do dono, sim.
+  // Num aparelho do restaurante: o PIN de outro restaurante não entra; o do dono, sim.
   const device = await (await browser.newContext()).newPage();
   await device.goto(`/r/${slug}/garcom`);
-  await device.getByLabel("PIN").fill(PINS.waiter);
+  await device.getByLabel("PIN").fill(restaurant.pins.waiter);
   await device.getByRole("button", { name: "Entrar" }).click();
   await expect(device.getByText("PIN errado.")).toBeVisible();
   await device.getByLabel("PIN").fill(pin);
   await device.getByRole("button", { name: "Entrar" }).click();
   await expect(device.getByRole("heading", { level: 1, name: "Garçom · Diego" })).toBeVisible();
-});
-
-test("a limpeza da demo só roda com o segredo do agendador", async ({ request }) => {
-  const response = await request.get("/api/cron/demo-reset");
-  expect(response.status()).toBe(401);
 });

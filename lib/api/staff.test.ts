@@ -24,7 +24,7 @@ import {
   staffLogout,
   updateSettings,
 } from "@/lib/api/staff";
-import { DEMO_PINS } from "@/lib/seed-data";
+import { SAMPLE_PINS } from "@/lib/seed-data";
 import { createMemoryStore } from "@/lib/store/memory";
 import type { OrderItem, Tab, TableSession } from "@/types/domain";
 import type { SessionSnapshot } from "@/types/store";
@@ -37,18 +37,18 @@ describe("login da equipe", () => {
 
   it("entra com o PIN pessoal e guarda quem entrou em cada tela do restaurante", async () => {
     const store = createMemoryStore();
-    const waiter = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.waiter }, NOW, "demo");
+    const waiter = await staffLogin(store, null, { role: "waiter", pin: SAMPLE_PINS.waiter }, NOW, "demo");
     expect(waiter.body).toEqual({ roles: ["waiter"], name: "Garçom da demo" });
     expect(seatsOf(waiter)).toEqual({ "demo:waiter": { id: "staff-demo-waiter", name: "Garçom da demo" } });
-    const both = await staffLogin(store, waiter.staff as StaffIdentity, { role: "kitchen", pin: DEMO_PINS.kitchen }, NOW, "demo");
+    const both = await staffLogin(store, waiter.staff as StaffIdentity, { role: "kitchen", pin: SAMPLE_PINS.kitchen }, NOW, "demo");
     expect(Object.keys(seatsOf(both)).sort()).toEqual(["demo:kitchen", "demo:waiter"]);
   });
 
   it("deixa o gerente usar a tela do garçom, mas não o garçom usar a do gerente", async () => {
     const store = createMemoryStore();
-    const manager = await staffLogin(store, null, { role: "waiter", pin: DEMO_PINS.manager }, NOW, "demo");
+    const manager = await staffLogin(store, null, { role: "waiter", pin: SAMPLE_PINS.manager }, NOW, "demo");
     expect(seatsOf(manager)["demo:waiter"]).toEqual({ id: "staff-demo-manager", name: "Gerente da demo" });
-    expect(errorOf(await staffLogin(store, null, { role: "manager", pin: DEMO_PINS.waiter }, NOW, "demo"))).toBe(
+    expect(errorOf(await staffLogin(store, null, { role: "manager", pin: SAMPLE_PINS.waiter }, NOW, "demo"))).toBe(
       "wrong_screen",
     );
   });

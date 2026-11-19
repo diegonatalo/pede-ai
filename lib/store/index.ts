@@ -38,7 +38,7 @@ const postgresDb = () => {
 const memoryWorld = () => {
   if (holder.__pedeAiWorld && process.env.NODE_ENV !== "production") {
     const held = holder.__pedeAiStores?.values().next().value;
-    const probe = createStore(createMemoryRepository(createMemoryWorld(), RESTAURANT.id));
+    const probe = createStore(createMemoryRepository(createMemoryWorld({ sample: true }), RESTAURANT.id));
     if (held && methodsOf(probe) !== methodsOf(held)) {
       holder.__pedeAiWorld = undefined;
       holder.__pedeAiStores = undefined;
@@ -54,7 +54,7 @@ const memoryWorld = () => {
  *
  * No `next dev`, mudanças só dentro de um método do motor pedem reiniciar o `pnpm dev`.
  */
-export const getStore = (restaurantId: string = RESTAURANT.id): Store => {
+export const getStore = (restaurantId: string): Store => {
   if (storeKind(process.env) === "postgres") {
     holder.__pedeAiPostgresStores ??= new Map();
     let store = holder.__pedeAiPostgresStores.get(restaurantId);

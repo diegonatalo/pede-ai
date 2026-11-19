@@ -202,7 +202,7 @@ export const editMenu = async (store: Store, actor: StaffActor, body: unknown): 
 
 export const getStaffFeed = async (store: Store, after: number): Promise<ApiResult> => {
   const { events, lastSeq } = await store.getEvents(after);
-  // Contagem menor que a da tela: os eventos foram apagados (limpeza da demo); a tela relê tudo.
+  // Contagem menor que a da tela: os eventos foram apagados ou reiniciados; a tela relê tudo.
   return success({ lastSeq, changed: events.length > 0 || lastSeq < after });
 };
 

@@ -1,5 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
-import { collectErrors, joinAndOpenTab, openFreshTable, openTable, staffLogin } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { collectErrors, expect, joinAndOpenTab, openTable, staffLogin, test } from "./fixtures";
 
 /** Adiciona itens do cardápio e envia o pedido. */
 const order = async (page: Page, items: string[]) => {
@@ -20,19 +20,20 @@ test("dois casais e uma amiga na mesma mesa: comandas separadas e vinho dividido
   browser,
   playwright,
   baseURL,
+  restaurant,
 }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  const { joinCode } = await openFreshTable(staff, "mesa-3");
+  await staffLogin(staff, restaurant, "waiter");
+  const { joinCode } = await openTable(staff, restaurant, "Mesa 3");
 
   const couple1 = await (await browser.newContext()).newPage();
   const couple2 = await (await browser.newContext()).newPage();
   const friend = await (await browser.newContext()).newPage();
   const errors = collectErrors(couple1);
 
-  await joinAndOpenTab(couple1, "mesa-3", joinCode, "Ana e Rui", 2);
-  await joinAndOpenTab(couple2, "mesa-3", joinCode, "Bia e Leo", 2);
-  await joinAndOpenTab(friend, "mesa-3", joinCode, "Lia");
+  await joinAndOpenTab(couple1, restaurant, "Mesa 3", joinCode, "Ana e Rui", 2);
+  await joinAndOpenTab(couple2, restaurant, "Mesa 3", joinCode, "Bia e Leo", 2);
+  await joinAndOpenTab(friend, restaurant, "Mesa 3", joinCode, "Lia");
 
   await order(couple1, ["Filé à parmegiana", "Vinho tinto (garrafa)"]); // 98,00 + 129,00
   await order(couple2, ["Lasanha à bolonhesa", "Lasanha à bolonhesa"]); // 2 × 62,00
@@ -62,8 +63,8 @@ test("dois casais e uma amiga na mesma mesa: comandas separadas e vinho dividido
   await expect(friend.getByText("Conta pedida. O garçom já vem.")).toBeVisible();
 
   const waiter = await (await browser.newContext()).newPage();
-  await staffLogin(waiter.request, "waiter");
-  await waiter.goto("/garcom");
+  await staffLogin(waiter.request, restaurant, "waiter");
+  await waiter.goto(restaurant.screen("garcom"));
   // A Lia também aparece em "Confirmar pedidos" (primeiro pedido); aqui interessa o chamado.
   const calls = waiter.getByRole("region", { name: /Chamados/ });
   await expect(calls.getByRole("heading", { name: "Mesa 3 · Lia" })).toBeVisible();
@@ -83,13 +84,12 @@ test("dois casais e uma amiga na mesma mesa: comandas separadas e vinho dividido
   expect(errors).toEqual([]);
 });
 
-test("chamar o garçom para tirar uma dúvida", async ({ browser, playwright, baseURL }) => {
+test("chamar o garçom para tirar uma dúvida", async ({ browser, playwright, baseURL, restaurant }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  // A mesa 7 também é usada pelo teste de cancelar item; openTable reaproveita se já estiver aberta.
-  const { joinCode } = await openTable(staff, "mesa-7");
+  await staffLogin(staff, restaurant, "waiter");
+  const { joinCode } = await openTable(staff, restaurant, "Mesa 7");
   const customer = await (await browser.newContext()).newPage();
-  await joinAndOpenTab(customer, "mesa-7", joinCode, "Rafa");
+  await joinAndOpenTab(customer, restaurant, "Mesa 7", joinCode, "Rafa");
 
   await customer.getByRole("button", { name: "Chamar", exact: true }).click();
   await customer.getByLabel("Recado (opcional)").fill("tem opção sem glúten?");
@@ -97,8 +97,8 @@ test("chamar o garçom para tirar uma dúvida", async ({ browser, playwright, ba
   await expect(customer.getByRole("status").filter({ hasText: "Chamando" })).toBeVisible();
 
   const waiter = await (await browser.newContext()).newPage();
-  await staffLogin(waiter.request, "waiter");
-  await waiter.goto("/garcom");
+  await staffLogin(waiter.request, restaurant, "waiter");
+  await waiter.goto(restaurant.screen("garcom"));
   const card = waiter.getByRole("listitem").filter({ hasText: "tem opção sem glúten?" });
   await card.getByRole("button", { name: /Estou indo/ }).click();
   await expect(customer.getByText("O garçom está a caminho")).toBeVisible({ timeout: 10_000 });

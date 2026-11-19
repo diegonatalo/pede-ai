@@ -83,10 +83,10 @@ export const MENU_ITEMS: MenuItem[] = [
 ];
 
 /** PINs públicos da demonstração, mostrados na página inicial. */
-export const DEMO_PINS: Record<StaffRole, string> = { kitchen: "1111", waiter: "2222", manager: "3333" };
+export const SAMPLE_PINS: Record<StaffRole, string> = { kitchen: "1111", waiter: "2222", manager: "3333" };
 
 /** Equipe da demonstração: uma pessoa por papel, com o PIN público. Não pode ser desativada. */
-export const DEMO_STAFF: (StaffMember & { pin: string })[] = (
+export const SAMPLE_STAFF: (StaffMember & { pin: string })[] = (
   [
     ["staff-demo-kitchen", "Cozinha da demo", "kitchen"],
     ["staff-demo-waiter", "Garçom da demo", "waiter"],
@@ -100,5 +100,5 @@ export const DEMO_STAFF: (StaffMember & { pin: string })[] = (
   active: true,
   system: true,
   createdAt: "2026-11-19T00:00:00.000Z",
-  pin: DEMO_PINS[role],
+  pin: SAMPLE_PINS[role],
 }));

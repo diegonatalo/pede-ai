@@ -10,8 +10,9 @@
 - [x] QR codes para imprimir (um por mesa) e mapa do salão no celular do cliente.
 - [x] Fase 2, etapa 1a: conta do dono com e-mail e senha.
 - [x] Fase 2, etapa 1b: equipe com PIN pessoal e registro de quem fez cada ação.
-- [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta e limpeza diária da demonstração.
+- [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta.
 - [x] Fase 2, etapa 3: cardápio editável pelo gerente.
-- [x] Página inicial de apresentação, com a demonstração em `/demo`.
+- [x] Página inicial de apresentação.
+- [x] Sem demonstração pública: usar e testar é pelo fluxo real (conta, restaurante, equipe).
 - [x] Nova identidade visual, com o espaço das fotos do cardápio pronto.
 - [ ] Fase 2: fotos e mesas editáveis, tempo real, LGPD, Pix, notificações e nota fiscal.

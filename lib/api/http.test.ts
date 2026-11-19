@@ -1,13 +1,18 @@
 // @vitest-environment node
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { CUSTOMER_COOKIE, STAFF_COOKIE, handleCustomer, handleStaff, respond } from "@/lib/api/http";
 import type { StaffIdentity } from "@/lib/api/identity";
 import { error, success } from "@/lib/api/result";
-import { newRestaurantData } from "@/lib/restaurant-template";
+import { newRestaurantData, sampleRestaurantData } from "@/lib/restaurant-template";
 import { getRegistry, getStore } from "@/lib/store";
 
-const URL_BASE = "http://localhost/api/teste";
+// Restaurante de exemplo, criado no mundo em memória do processo antes dos testes.
+const URL_BASE = "http://localhost/api/teste?r=demo";
+
+beforeAll(async () => {
+  await getRegistry().create(sampleRestaurantData());
+});
 
 const post = (body: string, headers: Record<string, string> = { "content-type": "application/json" }) =>
   new NextRequest(URL_BASE, { method: "POST", body, headers });
@@ -73,7 +78,7 @@ describe("handleStaff", () => {
     cookieFrom(await respond(success({}, { staff: { seats, exp: Date.now() + 60_000 } })), STAFF_COOKIE);
 
   const call = (role: string, cookie: string) =>
-    handleStaff(new NextRequest(`${URL_BASE}?role=${role}`, { headers: { cookie } }), (resolved) =>
+    handleStaff(new NextRequest(`${URL_BASE}&role=${role}`, { headers: { cookie } }), (resolved) =>
       success({ resolved }),
     );
 
@@ -88,7 +93,7 @@ describe("handleStaff", () => {
   });
 
   it("tira o acesso de quem foi desativado ou não existe mais, mesmo com o cookie válido", async () => {
-    const store = getStore();
+    const store = getStore("demo");
     const manager = { role: "manager" as const, staffId: "staff-demo-manager" };
     const created = await store.createStaff({ name: "Bruno", role: "waiter" }, manager);
     if (!created.ok) throw new Error(created.error);
@@ -113,7 +118,7 @@ describe("handleStaff", () => {
   it("responde 404 para restaurante que não existe", async () => {
     const cookie = await cookieWith({ "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
     const response = await handleStaff(
-      new NextRequest(`${URL_BASE}?role=kitchen&r=nao-existe`, { headers: { cookie } }),
+      new NextRequest("http://localhost/api/teste?role=kitchen&r=nao-existe", { headers: { cookie } }),
       () => success({}),
     );
     expect(response.status).toBe(404);
@@ -134,7 +139,7 @@ describe("handleStaff", () => {
     expect(await getRegistry().create(data)).toBe(true);
     const cookie = await cookieWith({ "demo:kitchen": { id: "staff-demo-kitchen", name: "Cozinha da demo" } });
     const response = await handleStaff(
-      new NextRequest(`${URL_BASE}?role=kitchen&r=cantina-teste-http`, { headers: { cookie } }),
+      new NextRequest("http://localhost/api/teste?role=kitchen&r=cantina-teste-http", { headers: { cookie } }),
       () => success({}),
     );
     expect(response.status).toBe(401);

@@ -44,7 +44,7 @@ describe("TeamPanel", () => {
     const spy = mockApi();
     render(<TeamPanel meId="eu" />);
     await screen.findByText("Garçom da demo");
-    expect(screen.getByText("PIN público da demo; não pode ser alterado.")).toBeInTheDocument();
+    expect(screen.getByText("PIN fixo; não pode ser alterado.")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Nome"), "Bruno");
     await userEvent.selectOptions(screen.getByLabelText("Papel"), "kitchen");

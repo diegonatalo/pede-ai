@@ -1,19 +1,16 @@
-import { expect, test } from "@playwright/test";
-import { collectErrors, joinAndOpenTab, json, openTable, staffLogin, tabIdsOf } from "./fixtures";
+import { collectErrors, expect, joinAndOpenTab, json, openTable, staffLogin, tabsOf, test } from "./fixtures";
 
-// Os testes rodam em paralelo contra o mesmo servidor: cada um usa a própria mesa.
-
-test("dois aparelhos na mesma mesa, cada um com a sua comanda", async ({ browser, playwright, baseURL }) => {
+test("dois aparelhos na mesma mesa, cada um com a sua comanda", async ({ browser, playwright, baseURL, restaurant }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  await staffLogin(staff, "kitchen");
-  const { session, joinCode } = await openTable(staff, "mesa-4");
+  await staffLogin(staff, restaurant, "waiter");
+  await staffLogin(staff, restaurant, "kitchen");
+  const { session, joinCode } = await openTable(staff, restaurant, "Mesa 4");
 
   const couple = await (await browser.newContext()).newPage();
   const friend = await (await browser.newContext()).newPage();
   const errors = collectErrors(couple);
 
-  await joinAndOpenTab(couple, "mesa-4", joinCode, "Ana e Rui", 2);
+  await joinAndOpenTab(couple, restaurant, "Mesa 4", joinCode, "Ana e Rui", 2);
   await couple.getByRole("button", { name: "Adicionar Burrata" }).click();
   await couple.getByRole("button", { name: "Adicionar Chope" }).click();
   await couple.getByRole("button", { name: "Mais um Chope" }).click();
@@ -25,7 +22,7 @@ test("dois aparelhos na mesma mesa, cada um com a sua comanda", async ({ browser
   await expect(couple.getByText("com pão extra")).toBeVisible();
   await expect(couple.getByText("Aguardando o garçom")).toHaveCount(2);
 
-  await joinAndOpenTab(friend, "mesa-4", joinCode, "Lia");
+  await joinAndOpenTab(friend, restaurant, "Mesa 4", joinCode, "Lia");
   await friend.getByRole("button", { name: "Adicionar Risoto de cogumelos" }).click();
   await friend.getByRole("button", { name: /Ver pedido/ }).click();
   await friend.getByRole("button", { name: "Enviar pedido" }).click();
@@ -34,18 +31,17 @@ test("dois aparelhos na mesma mesa, cada um com a sua comanda", async ({ browser
   await expect(friend.getByText("Burrata")).toHaveCount(0);
   await expect(couple.getByText("Risoto de cogumelos")).toHaveCount(0);
 
-  // A comanda e o item vêm do próprio celular (page.request usa os cookies dele): a mesa pode
-  // ter comandas de outras rodadas do teste.
-  const coupleView = await (await couple.request.get("/api/customer")).json();
+  // A comanda e o item vêm do próprio celular (page.request usa os cookies dele).
+  const coupleView = await (await couple.request.get(restaurant.api("/api/customer"))).json();
   const coupleTab = coupleView.tabs.find((tab: { mine: boolean }) => tab.mine);
-  const burrata = coupleView.items.find((item: { menuItemId: string }) => item.menuItemId === "burrata");
+  const burrata = coupleView.items.find((item: { menuItemId: string }) => item.menuItemId === restaurant.item("Burrata"));
   expect(coupleTab.customerName).toBe("Ana e Rui");
-  expect((await tabIdsOf(staff, session.id)).map((tab: { id: string }) => tab.id)).toContain(coupleTab.id);
+  expect((await tabsOf(staff, restaurant, session.id)).map((tab) => tab.id)).toContain(coupleTab.id);
 
   // O garçom confirma a comanda do casal e a cozinha começa um item: o celular atualiza sozinho.
-  expect((await staff.post(`/api/staff/tabs/${coupleTab.id}/approve?role=waiter`, json({}))).ok()).toBe(true);
+  expect((await staff.post(restaurant.api(`/api/staff/tabs/${coupleTab.id}/approve?role=waiter`), json({}))).ok()).toBe(true);
   await expect(couple.getByText("Na fila")).toHaveCount(2, { timeout: 10_000 });
-  await staff.post(`/api/staff/items/${burrata.id}/status?role=kitchen`, json({ to: "preparing" }));
+  await staff.post(restaurant.api(`/api/staff/items/${burrata.id}/status?role=kitchen`), json({ to: "preparing" }));
   await expect(couple.getByText("Em preparo")).toBeVisible({ timeout: 10_000 });
 
   // Recarregar não perde nada: a mesa e a comanda ficam no cookie, os pedidos no servidor.
@@ -57,12 +53,12 @@ test("dois aparelhos na mesma mesa, cada um com a sua comanda", async ({ browser
   expect(errors).toEqual([]);
 });
 
-test("cancela um item antes do preparo", async ({ page, playwright, baseURL }) => {
+test("cancela um item antes do preparo", async ({ page, playwright, baseURL, restaurant }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  const { joinCode } = await openTable(staff, "mesa-7");
+  await staffLogin(staff, restaurant, "waiter");
+  const { joinCode } = await openTable(staff, restaurant, "Mesa 7");
 
-  await joinAndOpenTab(page, "mesa-7", joinCode, "Caio");
+  await joinAndOpenTab(page, restaurant, "Mesa 7", joinCode, "Caio");
   await page.getByRole("button", { name: "Adicionar Café espresso" }).click();
   await page.getByRole("button", { name: /Ver pedido/ }).click();
   await page.getByRole("button", { name: "Enviar pedido" }).click();
@@ -71,13 +67,13 @@ test("cancela um item antes do preparo", async ({ page, playwright, baseURL }) =
   await expect(page.getByRole("button", { name: "Cancelar Café espresso" })).toHaveCount(0);
 });
 
-test("código errado não entra na mesa", async ({ page, playwright, baseURL }) => {
+test("código errado não entra na mesa", async ({ page, playwright, baseURL, restaurant }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  const { joinCode } = await openTable(staff, "mesa-8");
+  await staffLogin(staff, restaurant, "waiter");
+  const { joinCode } = await openTable(staff, restaurant, "Mesa 8");
   const wrong = joinCode === "0000" ? "1111" : "0000";
 
-  await page.goto("/mesa/mesa-8");
+  await page.goto(restaurant.screen(`mesa/${restaurant.table("Mesa 8")}`));
   await page.getByLabel("Código da mesa").fill(wrong);
   await page.getByRole("button", { name: "Entrar na mesa" }).click();
   // Por texto: o Next também põe um role="alert" na página (o anunciador de rotas).
@@ -85,12 +81,12 @@ test("código errado não entra na mesa", async ({ page, playwright, baseURL }) 
   await expect(page.getByLabel("Como podemos te chamar?")).toHaveCount(0);
 });
 
-test("o cliente acha a mesa, o banheiro e o caixa no mapa", async ({ page, playwright, baseURL }) => {
+test("o cliente acha a mesa, o banheiro e o caixa no mapa", async ({ page, playwright, baseURL, restaurant }) => {
   const staff = await playwright.request.newContext({ baseURL });
-  await staffLogin(staff, "waiter");
-  const { joinCode } = await openTable(staff, "mesa-7");
+  await staffLogin(staff, restaurant, "waiter");
+  const { joinCode } = await openTable(staff, restaurant, "Mesa 7");
 
-  await joinAndOpenTab(page, "mesa-7", joinCode, "Gabi");
+  await joinAndOpenTab(page, restaurant, "Mesa 7", joinCode, "Gabi");
   await page.getByRole("button", { name: "Onde fica?" }).click();
   await expect(page.getByRole("heading", { name: "Mapa do salão" })).toBeVisible();
   await expect(page.getByText("Sua mesa: Mesa 7, no meio do salão, à direita.")).toBeVisible();

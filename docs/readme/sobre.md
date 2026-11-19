@@ -2,4 +2,4 @@ O Pede Aí é um sistema de pedidos para restaurantes. Cada mesa tem um QR code:
 
 O caso central é a mesa compartilhada: dois casais ou um grupo de amigos, cada pessoa com a sua comanda, e a conta dividida por comanda (inclusive o item que foi dividido entre várias).
 
-O projeto está em construção, como demo e portfólio.
+O projeto está em construção, como portfólio.

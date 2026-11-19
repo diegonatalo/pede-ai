@@ -13,7 +13,7 @@ const unwrap = <T>(result: Result<T>): T => {
  * nas `interruptions` primeiras gravações.
  */
 const racingRepository = (interruptions: number) => {
-  const base = createMemoryRepository(createMemoryWorld(), "demo");
+  const base = createMemoryRepository(createMemoryWorld({ sample: true }), "demo");
   let remaining = interruptions;
   let saves = 0;
   const repo: Repository = {
@@ -56,7 +56,7 @@ describe("createStore com controle de versão", () => {
   });
 
   it("não grava nada (nem a versão) quando o comando é recusado", async () => {
-    const repo = createMemoryRepository(createMemoryWorld(), "demo");
+    const repo = createMemoryRepository(createMemoryWorld({ sample: true }), "demo");
     const { store, session } = await openTableWithTab(repo);
     const before = (await repo.loadSession(session.id))?.version;
     await store.createTab({ sessionId: session.id, customerName: "   ", peopleCount: 1 }, "customer");
@@ -65,7 +65,7 @@ describe("createStore com controle de versão", () => {
   });
 
   it("grava só a tentativa de código errado, sem evento", async () => {
-    const repo = createMemoryRepository(createMemoryWorld(), "demo");
+    const repo = createMemoryRepository(createMemoryWorld({ sample: true }), "demo");
     const { store, session } = await openTableWithTab(repo);
     await store.verifyJoinCode(session.id, "0000");
     expect((await repo.loadSession(session.id))?.secret.failedAttempts).toBe(1);

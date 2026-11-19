@@ -246,9 +246,4 @@ export type RestaurantRegistry = {
   listByOwner(ownerUserId: string): Promise<RestaurantRecord[]>;
   /** Grava o restaurante com salão, cardápio e equipe. `false` se o endereço já é de outro. */
   create(data: RestaurantData): Promise<boolean>;
-  /**
-   * Volta a demonstração ao começo: apaga mesas, comandas, pedidos, chamados, eventos e as pessoas
-   * cadastradas por visitantes, e restaura cardápio e configuração. Os outros restaurantes ficam.
-   */
-  resetDemo(): Promise<void>;
 };

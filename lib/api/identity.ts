@@ -11,8 +11,8 @@ export type CustomerIdentity = { sessionId: string; tabIds: string[]; exp: numbe
 export type StaffSeat = { id: string; name: string };
 
 /**
- * Aparelho da equipe: quem entrou em cada tela de cada restaurante (a demo abre várias telas no
- * mesmo navegador, e o dono pode estar na demo e no próprio restaurante). Chave: `restaurante:tela`.
+ * Aparelho da equipe: quem entrou em cada tela de cada restaurante (um aparelho pode abrir várias
+ * telas, e o dono pode ter mais de um restaurante). Chave: `restaurante:tela`.
  */
 export type StaffIdentity = { seats: Partial<Record<string, StaffSeat>>; exp: number };
 
