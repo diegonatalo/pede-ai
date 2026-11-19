@@ -122,6 +122,9 @@ export type Store = {
   ): Promise<Result<WaiterCall>>;
   setCallStatus(callId: string, to: CallStatus, actor: Role): Promise<Result<WaiterCall>>;
 
-  /** Eventos depois de `afterSeq` (opcionalmente só de uma sessão) e o último `seq` existente. */
+  /**
+   * Eventos depois de `afterSeq` e o último `seq` existente. Com `sessionId`, só os daquela
+   * mesa e os gerais (cardápio, configuração).
+   */
   getEvents(afterSeq: number, sessionId?: string): Promise<{ events: StoreEvent[]; lastSeq: number }>;
 };

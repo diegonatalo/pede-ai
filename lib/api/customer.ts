@@ -28,9 +28,10 @@ const loadMine = async (
 
 const isFailure = (value: object): value is ApiResult => "status" in value;
 
+/** Mesa do QR code. Mesa que não existe responde `table: null` (200), sem sujar o console. */
 export const getTableStatus = async (store: Store, tableId: string): Promise<ApiResult> => {
   const table = (await store.listTables()).find((entry) => entry.id === tableId);
-  if (!table) return error("not_found");
+  if (!table) return success({ table: null, open: false });
   const session = await store.getOpenSessionByTable(tableId);
   return success({ table, open: session !== null });
 };
@@ -52,12 +53,18 @@ export const joinTable = async (
   return success({ sessionId: session.id }, { customer: renew({ sessionId: session.id, tabIds }, now) });
 };
 
+/**
+ * Leitura da tela do cliente. Responde sempre 200 com `state` (`guest`, `closed` ou `ready`):
+ * quem ainda não entrou não é um erro, e um 401 sujaria o console do navegador.
+ */
 export const getCustomerView = async (store: Store, identity: Identity): Promise<ApiResult> => {
-  const loaded = await loadMine(store, identity);
-  if (isFailure(loaded)) return loaded;
+  if (!identity) return success({ state: "guest" });
+  const result = await store.getSessionSnapshot(identity.sessionId);
+  if (!result.ok) return success({ state: "guest" }, { customer: null });
+  if (result.value.session.status !== "open") return success({ state: "closed" }, { customer: null });
   const { lastSeq } = await store.getEvents(Number.MAX_SAFE_INTEGER);
-  const view = customerView(loaded.snapshot, await store.getRestaurant(), loaded.identity.tabIds);
-  return success({ ...view, lastSeq });
+  const view = customerView(result.value, await store.getRestaurant(), identity.tabIds);
+  return success({ state: "ready", ...view, lastSeq });
 };
 
 export const createCustomerTab = async (
@@ -195,10 +202,13 @@ export const setCustomerCallStatus = async (
   return fromResult(await store.setCallStatus(callId, body.to as CallStatus, "customer"));
 };
 
-/** Polling: diz se algo mudou na mesa depois de `after`. */
+/**
+ * Polling: diz se algo mudou na mesa depois de `after`. Sem acesso ou com a mesa fechada,
+ * responde `changed: true` para a tela reler a visão e descobrir o motivo (sem erro no console).
+ */
 export const getCustomerFeed = async (store: Store, identity: Identity, after: number): Promise<ApiResult> => {
-  const loaded = await loadMine(store, identity);
-  if (isFailure(loaded)) return loaded;
-  const { events, lastSeq } = await store.getEvents(after, loaded.snapshot.session.id);
+  const result = identity ? await store.getSessionSnapshot(identity.sessionId) : null;
+  if (!result?.ok || result.value.session.status !== "open") return success({ lastSeq: after, changed: true });
+  const { events, lastSeq } = await store.getEvents(after, result.value.session.id);
   return success({ lastSeq, changed: events.length > 0 });
 };
