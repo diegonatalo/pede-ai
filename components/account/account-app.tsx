@@ -3,8 +3,10 @@
 import { DeleteAccount } from "@/components/account/delete-account";
 import { OwnRestaurants } from "@/components/account/own-restaurants";
 import { SignInForm } from "@/components/account/sign-in-form";
+import { TermsGate } from "@/components/account/terms-gate";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { useAccount } from "@/hooks/use-account";
+import { needsTermsAcceptance } from "@/lib/terms";
 
 /** Área do dono do restaurante: a conta e os restaurantes dela. */
 export const AccountApp = () => {
@@ -21,6 +23,15 @@ export const AccountApp = () => {
   if (state.status === "guest") return <SignInForm onSignedIn={() => void refresh()} />;
 
   const { account } = state;
+  if (needsTermsAcceptance(account.termsVersion)) {
+    return (
+      <TermsGate
+        updated={account.termsVersion !== null}
+        onAccepted={() => void refresh()}
+        onSignOut={() => void signOut()}
+      />
+    );
+  }
   return (
     <main id="conteudo" className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-4 py-10">
       <section className={`${CARD} flex flex-wrap items-start justify-between gap-4 p-6`}>

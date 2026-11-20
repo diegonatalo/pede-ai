@@ -15,6 +15,8 @@
 - [x] Fase 2: mesas e mapa do salão editáveis pelo gerente.
 - [x] Nome do restaurante editável; excluir restaurante e conta.
 - [x] Privacidade: página `/privacidade` e limpeza diária de nomes e recados das mesas antigas.
+- [x] Termos de uso em `/termos`, com aceite do dono gravado na conta.
+- [ ] Trocar o e-mail de contato provisório (`PRIVACY_EMAIL` em `lib/site.ts`).
 - [x] Limite de códigos de mesa errados por endereço de internet.
 - [x] Números por período e planilhas em CSV para o gerente.
 - [x] Avisos no celular do garçom (Web Push).

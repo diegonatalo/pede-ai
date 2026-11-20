@@ -225,6 +225,9 @@ export const authUsers = pgTable("auth_users", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
+  /** Versão dos termos de uso que o dono aceitou (`TERMS_VERSION` de `lib/terms.ts`) e quando. */
+  termsVersion: text("terms_version"),
+  termsAcceptedAt: timestamp("terms_accepted_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

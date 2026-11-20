@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   PASSWORD_TOO_SHORT: "A senha precisa ter pelo menos 8 caracteres.",
   PASSWORD_TOO_LONG: "A senha está longa demais.",
   USER_NOT_FOUND: "Não achamos uma conta com este e-mail.",
+  TERMS_NOT_ACCEPTED: "Para continuar, aceite os termos de uso.",
   FAILED_TO_CREATE_USER: "Não deu para criar a conta agora. Tente de novo.",
 };
 

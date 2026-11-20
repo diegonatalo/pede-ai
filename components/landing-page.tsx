@@ -216,6 +216,9 @@ export const LandingPage = () => (
           <Link href="/privacidade" className="underline hover:text-foreground">
             Privacidade
           </Link>
+          <Link href="/termos" className="underline hover:text-foreground">
+            Termos de uso
+          </Link>
           <span>
             Fotos:{" "}
             <a href="https://unsplash.com" className="underline hover:text-foreground" rel="noopener noreferrer">

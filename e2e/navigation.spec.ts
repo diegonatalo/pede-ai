@@ -6,6 +6,7 @@ for (const { path, heading } of [
   { path: "/", heading: HOME },
   { path: "/conta", heading: "Entrar na sua conta" },
   { path: "/privacidade", heading: "Privacidade" },
+  { path: "/termos", heading: "Termos de uso" },
 ]) {
   test(`abre ${path} sem erros no console`, async ({ page }) => {
     const errors = collectErrors(page);
@@ -50,6 +51,15 @@ test("a página inicial leva à política de privacidade", async ({ page }) => {
   await page.getByRole("contentinfo").getByRole("link", { name: "Privacidade" }).click();
   await expect(page).toHaveURL("/privacidade");
   await expect(page.getByText("30 dias depois que a mesa fecha")).toBeVisible();
+});
+
+test("a página inicial leva aos termos de uso, que levam à privacidade", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("contentinfo").getByRole("link", { name: "Termos de uso" }).click();
+  await expect(page).toHaveURL("/termos");
+  await expect(page.getByRole("heading", { name: "Quem responde pelo quê" })).toBeVisible();
+  await page.getByRole("link", { name: "política de privacidade" }).click();
+  await expect(page).toHaveURL("/privacidade");
 });
 
 test("a limpeza de dados pessoais só roda com a senha do agendador", async ({ request }) => {

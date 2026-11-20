@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SignInForm } from "@/components/account/sign-in-form";
+import { TERMS_VERSION } from "@/lib/terms";
 
 const auth = vi.hoisted(() => ({
   signIn: { email: vi.fn() },
@@ -37,7 +38,16 @@ describe("SignInForm", () => {
     await userEvent.type(screen.getByLabelText("Senha"), "senha-forte-1");
     expect(screen.getByLabelText("Senha")).toHaveAccessibleDescription("Pelo menos 8 caracteres.");
     await userEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
-    expect(auth.signUp.email).toHaveBeenCalledWith({ name: "Diego", email: "dono@exemplo.com", password: "senha-forte-1" });
+    // Sem aceitar os termos, o formulário não envia.
+    expect(auth.signUp.email).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("checkbox", { name: /Li e aceito/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Criar minha conta" }));
+    expect(auth.signUp.email).toHaveBeenCalledWith({
+      name: "Diego",
+      email: "dono@exemplo.com",
+      password: "senha-forte-1",
+      termsVersion: TERMS_VERSION,
+    });
     expect(onSignedIn).toHaveBeenCalledOnce();
   });
 

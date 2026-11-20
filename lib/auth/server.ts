@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { drizzle } from "drizzle-orm/neon-http";
@@ -7,8 +8,12 @@ import { authBaseURL, authSecret, missingSecretOnVercel } from "@/lib/auth/confi
 import { authAccounts, authSessions, authUsers, authVerifications } from "@/lib/db/schema";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { getRegistry, storeKind } from "@/lib/store";
+import { termsAcceptance } from "@/lib/terms";
 
 type Env = Record<string, string | undefined>;
+
+const termsNotAccepted = () =>
+  new APIError("BAD_REQUEST", { code: "TERMS_NOT_ACCEPTED", message: "Aceite a versão atual dos termos de uso." });
 
 /** Banco do login: o Postgres quando o app usa o Postgres; memória no resto (CI, E2E, `pnpm dev`). */
 const database = (env: Env) => {
@@ -39,11 +44,37 @@ export const createAuth = (env: Env = process.env) => {
     // endereço e criariam contas mais rápido que o limite de cadastro (3 a cada 10 s).
     rateLimit: { enabled: Boolean(env.VERCEL) },
     user: {
+      // Aceite dos termos: o navegador manda a versão; a data é sempre a do servidor.
+      additionalFields: {
+        termsVersion: { type: "string", required: false, input: true },
+        termsAcceptedAt: { type: "date", required: false, input: false },
+      },
       // A pessoa apaga a própria conta confirmando a senha; os restaurantes dela vão junto (LGPD).
       deleteUser: {
         enabled: true,
         beforeDelete: async (user) => {
           await deleteOwnedRestaurants(getRegistry(), user.id);
+        },
+      },
+    },
+    databaseHooks: {
+      user: {
+        // Sem aceitar a versão atual dos termos, a conta não é criada.
+        create: {
+          before: async (user) => {
+            const accepted = termsAcceptance(user.termsVersion, new Date());
+            if (!accepted) throw termsNotAccepted();
+            return { data: { ...user, ...accepted } };
+          },
+        },
+        // Quem já tem conta aceita a versão nova pela tela da conta (`updateUser`).
+        update: {
+          before: async (data) => {
+            if (data.termsVersion === undefined) return;
+            const accepted = termsAcceptance(data.termsVersion, new Date());
+            if (!accepted) throw termsNotAccepted();
+            return { data: { ...data, ...accepted } };
+          },
         },
       },
     },
