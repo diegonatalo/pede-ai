@@ -14,6 +14,8 @@ import { parseFloorChange } from "@/lib/floor-editor";
 import { generateJoinCode } from "@/lib/join-code";
 import { parseMenuChange } from "@/lib/menu-editor";
 import { computeDayReport } from "@/lib/metrics";
+import { MAX_PERIOD_DAYS } from "@/lib/periods";
+import { reportRows } from "@/lib/report-rows";
 import { ownerStaffIdFor } from "@/lib/restaurant-template";
 import type { CallStatus, ItemStatus, StaffMember, TabStatus } from "@/types/domain";
 import type { RestaurantSettings, Store } from "@/types/store";
@@ -189,11 +191,30 @@ export const updateSettings = async (store: Store, actor: StaffActor, body: unkn
 };
 
 /** Números do dia para o gerente. `since` é o início do dia no fuso de quem pede. */
-export const getManagerReport = async (store: Store, actor: StaffActor, since: string | null): Promise<ApiResult> => {
-  if (!since) return error("invalid_input");
-  const sessions = await store.listSessionsSince(since, actor);
+export const getManagerReport = async (
+  store: Store,
+  actor: StaffActor,
+  since: string | null,
+  until: string | null = null,
+): Promise<ApiResult> => {
+  const start = since ? Date.parse(since) : Number.NaN;
+  const end = until ? Date.parse(until) : Number.POSITIVE_INFINITY;
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return error("invalid_input");
+  if (Number.isFinite(end) && (end - start) / 86_400_000 > MAX_PERIOD_DAYS + 1) return error("invalid_input");
+  const sessions = await store.listSessionsSince(new Date(start).toISOString(), actor);
   if (!sessions.ok) return error(sessions.error);
-  return success({ since, report: computeDayReport(sessions.value, await store.getRestaurant()) });
+  // Mesas abertas no período (a lista do store também traz as abertas agora, de qualquer dia).
+  const inPeriod = sessions.value.filter(({ session }) => {
+    const opened = Date.parse(session.openedAt);
+    return opened >= start && opened < end;
+  });
+  const restaurant = await store.getRestaurant();
+  return success({
+    since,
+    until,
+    report: computeDayReport(inPeriod, restaurant),
+    rows: reportRows(inPeriod, restaurant),
+  });
 };
 
 /** Gerente edita o cardápio: uma mudança por requisição (ver `MenuChange`). */

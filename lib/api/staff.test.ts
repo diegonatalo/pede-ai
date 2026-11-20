@@ -219,6 +219,36 @@ describe("cardápio, configuração e feed", () => {
     expect(errorOf(await getManagerReport(store, "manager", null))).toBe("invalid_input");
   });
 
+  it("filtra o relatório pelo período e devolve as linhas das planilhas", async () => {
+    let minute = 0;
+    // Uma mesa aberta em 10/11 e outra em 20/11.
+    const times = [Date.UTC(2026, 10, 10, 22), Date.UTC(2026, 10, 20, 22)];
+    let current = times[0];
+    const store = createMemoryStore({ now: () => new Date(current + minute++ * 60_000) });
+    for (const [index, tableId] of ["mesa-1", "mesa-2"].entries()) {
+      current = times[index];
+      const { session } = (await openTable(store, "waiter", { tableId })).body as { session: TableSession };
+      const tab = (await createStaffTab(store, "waiter", { sessionId: session.id, customerName: `C${index}`, peopleCount: 1 }))
+        .body as Tab;
+      await placeStaffOrder(store, "waiter", { tabId: tab.id, lines: [{ menuItemId: "chope", quantity: 1 }] });
+    }
+    const november20 = await getManagerReport(store, "manager", "2026-11-20T00:00:00.000Z", "2026-11-21T00:00:00.000Z");
+    const body = november20.body as { report: { openTables: number }; rows: { items: { tab: string }[]; tabs: unknown[] } };
+    expect(body.report.openTables).toBe(1);
+    expect(body.rows.items.map((row) => row.tab)).toEqual(["C1"]);
+    expect(body.rows.tabs).toHaveLength(1);
+    // Período sem mesas, invertido, inválido ou longo demais.
+    const empty = await getManagerReport(store, "manager", "2026-11-11T00:00:00.000Z", "2026-11-12T00:00:00.000Z");
+    expect((empty.body as { rows: { items: unknown[] } }).rows.items).toEqual([]);
+    expect(errorOf(await getManagerReport(store, "manager", "2026-11-21T00:00:00.000Z", "2026-11-20T00:00:00.000Z"))).toBe(
+      "invalid_input",
+    );
+    expect(errorOf(await getManagerReport(store, "manager", "ontem"))).toBe("invalid_input");
+    expect(errorOf(await getManagerReport(store, "manager", "2020-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"))).toBe(
+      "invalid_input",
+    );
+  });
+
   it("avisa quando algo mudou em qualquer mesa", async () => {
     const store = createMemoryStore();
     const start = (await getStaffFeed(store, 0)).body as { lastSeq: number; changed: boolean };

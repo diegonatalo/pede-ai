@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { collectErrors, expect, staffLogin, test, title } from "./fixtures";
+import { collectErrors, expect, json, staffLogin, test, title } from "./fixtures";
 
 const baseURLOf = (page: Page) => new URL(page.url()).origin;
 
@@ -44,4 +44,41 @@ test("o relatório e os ajustes são só do gerente", async ({ request, restaura
     headers: { "content-type": "application/json" },
   });
   expect(patch.status()).toBe(403);
+});
+
+test("o gerente escolhe o período e baixa as planilhas", async ({ page, playwright, baseURL, restaurant }) => {
+  const { api } = restaurant;
+  // Um pedido de hoje: o garçom abre a mesa e lança pela própria tela (pela API).
+  const staff = await playwright.request.newContext({ baseURL });
+  await staffLogin(staff, restaurant, "waiter");
+  const opened = await staff.post(api("/api/staff/sessions?role=waiter"), json({ tableId: restaurant.table("Mesa 3") }));
+  const { session } = await opened.json();
+  const tab = await (await staff.post(api("/api/staff/tabs?role=waiter"), json({ sessionId: session.id, customerName: "Ana", peopleCount: 2 }))).json();
+  await staff.post(api("/api/staff/orders?role=waiter"), json({ tabId: tab.id, lines: [{ menuItemId: restaurant.item("Chope"), quantity: 2 }] }));
+
+  await staffLogin(page.request, restaurant, "manager");
+  await page.goto(restaurant.screen("gerente"));
+  const errors = collectErrors(page);
+  await page.getByRole("button", { name: "Números" }).click();
+  await expect(page.getByRole("heading", { name: "Hoje" })).toBeVisible();
+  await expect(page.getByText("Itens vendidos").locator("..").getByText("2", { exact: true })).toBeVisible();
+
+  // Ontem não teve nada: as planilhas ficam sem o que baixar.
+  await page.getByRole("button", { name: "Ontem" }).click();
+  await expect(page.getByRole("heading", { name: "Ontem" })).toBeVisible();
+  await expect(page.getByText("Nenhum item vendido neste período.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Baixar itens (CSV)" })).toBeDisabled();
+
+  await page.getByRole("button", { name: "Últimos 7 dias" }).click();
+  await expect(page.getByRole("heading", { name: "Últimos 7 dias" })).toBeVisible();
+  const [file] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Baixar itens (CSV)" }).click(),
+  ]);
+  expect(file.suggestedFilename()).toMatch(/^pede-ai-itens-\d{4}-\d{2}-\d{2}-a-\d{4}-\d{2}-\d{2}\.csv$/);
+  const content = (await (await file.createReadStream()).toArray()).join("");
+  const lines = content.replace(/^﻿/, "").trim().split("\r\n");
+  expect(lines[0]).toBe("Data;Hora;Mesa;Comanda;Item;Preparo;Quantidade;Preço unitário (R$);Total (R$);Situação");
+  expect(lines[1]).toMatch(/;Mesa 3;Ana;Chope;Bar;2;13,00;26,00;/);
+  expect(errors).toEqual([]);
 });
