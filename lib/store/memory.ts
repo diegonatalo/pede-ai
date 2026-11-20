@@ -1,5 +1,6 @@
 import { sampleRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
+import type { PushStore, PushSubscriptionRecord } from "@/lib/push";
 import { JOIN_LIMIT, windowActive, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
 import { RESTAURANT } from "@/lib/seed-data";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
@@ -322,6 +323,22 @@ export const createMemoryRateLimiter = ({ failures, windowMs }: RateLimitConfig 
         }
       }
       return removed;
+    },
+  };
+};
+
+/** Inscrições de push em memória (um processo). */
+export const createMemoryPushStore = (): PushStore => {
+  const records = new Map<string, PushSubscriptionRecord>();
+  return {
+    async save(record) {
+      records.set(record.endpoint, structuredClone(record));
+    },
+    async remove(endpoint) {
+      records.delete(endpoint);
+    },
+    async listForRestaurant(restaurantId) {
+      return [...records.values()].filter((record) => record.restaurantId === restaurantId).map((record) => structuredClone(record));
     },
   };
 };

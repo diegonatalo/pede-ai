@@ -74,3 +74,20 @@ test("o login vale para o navegador até sair", async ({ page, restaurant }) => 
   await page.reload();
   await expect(page.getByLabel("PIN")).toBeVisible();
 });
+
+test("sem as chaves de aviso no servidor, a tela do garçom não oferece avisos", async ({ page, restaurant }) => {
+  const { api } = restaurant;
+  await staffLogin(page.request, restaurant, "waiter");
+  expect(await (await page.request.get(api("/api/staff/push?role=waiter"))).json()).toEqual({ publicKey: null });
+  // Sem as chaves no servidor, a inscrição é recusada antes de olhar o conteúdo.
+  const subscription = { endpoint: "aparelho-de-teste", keys: { p256dh: "chave", auth: "segredo" } };
+  expect((await page.request.post(api("/api/staff/push?role=waiter"), json({ subscription }))).status()).toBe(400);
+  await page.goto(restaurant.screen("garcom"));
+  await expect(page.getByRole("button", { name: "Agora" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /avisos/i })).toHaveCount(0);
+});
+
+test("a cozinha não se inscreve para avisos do garçom", async ({ request, restaurant }) => {
+  await staffLogin(request, restaurant, "kitchen");
+  expect((await request.get(restaurant.api("/api/staff/push?role=kitchen"))).status()).toBe(403);
+});

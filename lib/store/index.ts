@@ -1,7 +1,9 @@
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
+import type { PushStore } from "@/lib/push";
 import type { RateLimiter } from "@/lib/rate-limit";
 import {
+  createMemoryPushStore,
   createMemoryRateLimiter,
   createMemoryRegistry,
   createMemoryRepository,
@@ -10,6 +12,7 @@ import {
 } from "@/lib/store/memory";
 import {
   createPostgresDb,
+  createPostgresPushStore,
   createPostgresRateLimiter,
   createPostgresRegistry,
   createPostgresRepository,
@@ -25,6 +28,7 @@ const holder = globalThis as typeof globalThis & {
   __pedeAiPostgresDb?: Db;
   __pedeAiPostgresStores?: Map<string, Store>;
   __pedeAiRateLimiter?: RateLimiter;
+  __pedeAiPushStore?: PushStore;
 };
 
 const methodsOf = (store: Store) => Object.keys(store).sort().join(",");
@@ -92,6 +96,15 @@ export const getRateLimiter = (): RateLimiter => {
   }
   holder.__pedeAiRateLimiter ??= createMemoryRateLimiter();
   return holder.__pedeAiRateLimiter;
+};
+
+/** Aparelhos da equipe inscritos para receber avisos. */
+export const getPushStore = (): PushStore => {
+  if (storeKind(process.env) === "postgres") {
+    return createPostgresPushStore(process.env.DATABASE_URL as string, { db: postgresDb() });
+  }
+  holder.__pedeAiPushStore ??= createMemoryPushStore();
+  return holder.__pedeAiPushStore;
 };
 
 /** Cadastro dos restaurantes (achar pelo endereço ou pelo dono, criar um novo). */

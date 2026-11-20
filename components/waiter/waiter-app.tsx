@@ -63,6 +63,7 @@ export const WaiterApp = () => {
         personName={data.me?.name}
         soundOn={soundOn}
         onToggleSound={toggleSound}
+        push
         onLoggedOut={() => void refresh()}
       />
 

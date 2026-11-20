@@ -291,3 +291,22 @@ export const rateLimits = pgTable("rate_limits", {
   count: integer("count").notNull(),
   windowStart: bigint("window_start", { mode: "number" }).notNull(),
 });
+
+/**
+ * Aparelhos da equipe inscritos para receber avisos (Web Push). O endereço de envio é único por
+ * aparelho; as chaves servem para criptografar o aviso, que só aquele aparelho consegue abrir.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    endpoint: text("endpoint").primaryKey(),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    staffId: text("staff_id").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => [index("push_subscriptions_restaurant").on(table.restaurantId)],
+);

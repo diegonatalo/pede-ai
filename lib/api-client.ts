@@ -8,7 +8,7 @@ export type ApiResponse<T> =
   | { ok: false; status: number; error: string; message: string };
 
 /** Opções de uma chamada. */
-export type RequestOptions = { method?: "GET" | "POST" | "PATCH"; body?: unknown };
+export type RequestOptions = { method?: "GET" | "POST" | "PATCH" | "DELETE"; body?: unknown };
 
 /** Chamada à API já presa a um restaurante (ver `useApi`). */
 export type Api = <T>(path: string, options?: RequestOptions) => Promise<ApiResponse<T>>;
