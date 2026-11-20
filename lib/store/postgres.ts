@@ -21,6 +21,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
+import { JOIN_LIMIT, windowActive, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
@@ -58,6 +59,7 @@ const {
   tableSessions,
   tabs,
   waiterCalls,
+  rateLimits,
 } = schema;
 
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
@@ -657,6 +659,40 @@ export const createPostgresRegistry = (
           .where(and(inArray(waiterCalls.sessionId, old), isNotNull(waiterCalls.message))),
       ]);
       return renamed.length;
+    },
+  };
+};
+
+/**
+ * Limitador no Postgres: vale para todas as instâncias da Vercel. Somar uma falha é um upsert
+ * atômico (duas requisições ao mesmo tempo não perdem contagem).
+ */
+export const createPostgresRateLimiter = (
+  url: string,
+  { db: shared, failures = JOIN_LIMIT.failures, windowMs = JOIN_LIMIT.windowMs }: { db?: Db } & Partial<RateLimitConfig> = {},
+): RateLimiter => {
+  const db: Db = shared ?? drizzle(url, { schema });
+  return {
+    async isBlocked(key, nowMs) {
+      const [row] = await db.select().from(rateLimits).where(eq(rateLimits.key, key));
+      return Boolean(row && windowActive(row.windowStart, nowMs, windowMs) && row.count >= failures);
+    },
+    async recordFailure(key, nowMs) {
+      const expired = sql`${rateLimits.windowStart} <= ${nowMs - windowMs}`;
+      await db
+        .insert(rateLimits)
+        .values({ key, count: 1, windowStart: nowMs })
+        .onConflictDoUpdate({
+          target: rateLimits.key,
+          set: {
+            count: sql`case when ${expired} then 1 else ${rateLimits.count} + 1 end`,
+            windowStart: sql`case when ${expired} then ${nowMs} else ${rateLimits.windowStart} end`,
+          },
+        });
+    },
+    async prune(beforeMs) {
+      const removed = await db.delete(rateLimits).where(lt(rateLimits.windowStart, beforeMs)).returning({ key: rateLimits.key });
+      return removed.length;
     },
   };
 };

@@ -15,6 +15,7 @@
 - [x] Fase 2: mesas e mapa do salão editáveis pelo gerente.
 - [x] Nome do restaurante editável; excluir restaurante e conta.
 - [x] Privacidade: página `/privacidade` e limpeza diária de nomes e recados das mesas antigas.
+- [x] Limite de códigos de mesa errados por endereço de internet.
 - [x] Página inicial de apresentação.
 - [x] Sem demonstração pública: usar e testar é pelo fluxo real (conta, restaurante, equipe).
 - [x] Nova identidade visual, com o espaço das fotos do cardápio pronto.

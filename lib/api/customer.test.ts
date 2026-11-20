@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/customer";
 import type { CustomerIdentity } from "@/lib/api/identity";
 import type { ApiResult } from "@/lib/api/result";
-import { createMemoryStore } from "@/lib/store/memory";
+import { createMemoryRateLimiter, createMemoryStore } from "@/lib/store/memory";
 import type { CustomerView } from "@/lib/views";
 import type { OrderItem, Tab, WaiterCall } from "@/types/domain";
 import type { Store } from "@/types/store";
@@ -64,6 +64,22 @@ describe("entrada na mesa", () => {
     expect(result.status).toBe(200);
     expect(result.customer).toMatchObject({ sessionId, tabIds: [] });
     expect(result.customer?.exp).toBeGreaterThan(NOW);
+  });
+
+  it("conta os códigos errados de quem tenta e barra quem passou do limite, mesmo com o código certo", async () => {
+    const { store } = await setup();
+    const limiter = createMemoryRateLimiter({ failures: 2, windowMs: 60_000 });
+    const guard = {
+      isBlocked: () => limiter.isBlocked("join:x", NOW),
+      recordFailure: () => limiter.recordFailure("join:x", NOW),
+    };
+    // Código certo não conta como falha.
+    expect(errorOf(await joinTable(store, null, "mesa-3", { code: "1234" }, NOW, guard))).toBe("ok");
+    expect(errorOf(await joinTable(store, null, "mesa-3", { code: "0000" }, NOW, guard))).toBe("wrong_code");
+    expect(errorOf(await joinTable(store, null, "mesa-3", { code: "0001" }, NOW, guard))).toBe("wrong_code");
+    expect(errorOf(await joinTable(store, null, "mesa-3", { code: "1234" }, NOW, guard))).toBe("locked");
+    // Mesa fechada não conta (não é tentativa de código).
+    expect(await limiter.isBlocked("join:y", NOW)).toBe(false);
   });
 
   it("recusa código errado, mesa fechada e corpo inválido", async () => {

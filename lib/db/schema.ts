@@ -281,3 +281,13 @@ export const authVerifications = pgTable(
   },
   (table) => [index("auth_verifications_identifier").on(table.identifier)],
 );
+
+/**
+ * Falhas por chave numa janela de tempo (ex.: códigos de mesa errados por endereço de internet).
+ * A chave é um HMAC do endereço, nunca o endereço (ver lib/rate-limit.ts).
+ */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  windowStart: bigint("window_start", { mode: "number" }).notNull(),
+});

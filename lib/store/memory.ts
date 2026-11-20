@@ -1,5 +1,6 @@
 import { sampleRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
+import { JOIN_LIMIT, windowActive, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
 import { RESTAURANT } from "@/lib/seed-data";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import { createStore, type EngineOptions } from "@/lib/store/engine";
@@ -294,3 +295,33 @@ export const createMemoryRegistry = (world: MemoryWorld): RestaurantRegistry => 
 /** Store do restaurante de exemplo num mundo novo (testes). */
 export const createMemoryStore = (options: EngineOptions = {}): Store =>
   createStore(createMemoryRepository(createMemoryWorld({ pinKey: options.pinKey, sample: true }), RESTAURANT.id), options);
+
+/** Limitador em memória (um processo: `pnpm dev`, E2E, testes). */
+export const createMemoryRateLimiter = ({ failures, windowMs }: RateLimitConfig = JOIN_LIMIT): RateLimiter => {
+  const counts = new Map<string, { count: number; windowStart: number }>();
+  return {
+    async isBlocked(key, nowMs) {
+      const entry = counts.get(key);
+      return Boolean(entry && windowActive(entry.windowStart, nowMs, windowMs) && entry.count >= failures);
+    },
+    async recordFailure(key, nowMs) {
+      const entry = counts.get(key);
+      counts.set(
+        key,
+        entry && windowActive(entry.windowStart, nowMs, windowMs)
+          ? { count: entry.count + 1, windowStart: entry.windowStart }
+          : { count: 1, windowStart: nowMs },
+      );
+    },
+    async prune(beforeMs) {
+      let removed = 0;
+      for (const [key, entry] of counts) {
+        if (entry.windowStart < beforeMs) {
+          counts.delete(key);
+          removed += 1;
+        }
+      }
+      return removed;
+    },
+  };
+};
