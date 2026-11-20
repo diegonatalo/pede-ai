@@ -23,6 +23,9 @@ const bricolage = Bricolage_Grotesque({
 // (e quebra as rotas com id). O canonical vai só na página inicial.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  // O manifesto deixa adicionar à tela de início, o que o iPhone exige para receber avisos.
+  manifest: "/manifest.webmanifest",
+  icons: { apple: "/icon.svg" },
   title: SITE_NAME,
   description: SITE_DESCRIPTION,
   openGraph: {

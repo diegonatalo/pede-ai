@@ -21,6 +21,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
+import type { PushStore } from "@/lib/push";
 import { JOIN_LIMIT, windowActive, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
@@ -60,6 +61,7 @@ const {
   tabs,
   waiterCalls,
   rateLimits,
+  pushSubscriptions,
 } = schema;
 
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
@@ -638,6 +640,7 @@ export const createPostgresRegistry = (
         db.delete(menuCategories).where(eq(menuCategories.restaurantId, restaurantId)),
         db.delete(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)),
         db.delete(diningTables).where(eq(diningTables.restaurantId, restaurantId)),
+        db.delete(pushSubscriptions).where(eq(pushSubscriptions.restaurantId, restaurantId)),
         db.delete(restaurants).where(eq(restaurants.id, restaurantId)),
       ]);
     },
@@ -693,6 +696,25 @@ export const createPostgresRateLimiter = (
     async prune(beforeMs) {
       const removed = await db.delete(rateLimits).where(lt(rateLimits.windowStart, beforeMs)).returning({ key: rateLimits.key });
       return removed.length;
+    },
+  };
+};
+
+/** Inscrições de push no Postgres (vale para todas as instâncias). */
+export const createPostgresPushStore = (url: string, { db: shared }: { db?: Db } = {}): PushStore => {
+  const db: Db = shared ?? drizzle(url, { schema });
+  return {
+    async save(record) {
+      await db
+        .insert(pushSubscriptions)
+        .values(record)
+        .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: replaceAll(pushSubscriptions, ["endpoint"]) });
+    },
+    async remove(endpoint) {
+      await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+    },
+    async listForRestaurant(restaurantId) {
+      return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.restaurantId, restaurantId));
     },
   };
 };

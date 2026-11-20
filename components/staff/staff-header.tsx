@@ -1,5 +1,6 @@
 "use client";
 
+import { PushToggle } from "@/components/staff/push-toggle";
 import { ROLE_LABEL } from "@/components/staff/staff-login";
 import { UtensilsIcon } from "@/components/ui/icons";
 import { BUTTON, EYEBROW } from "@/components/ui/styles";
@@ -14,10 +15,12 @@ type Props = {
   /** Sem `onToggleSound`, o botão de som não aparece (tela sem avisos sonoros). */
   soundOn?: boolean;
   onToggleSound?: () => void;
+  /** Mostra o botão de avisos no celular (tela do garçom). */
+  push?: boolean;
   onLoggedOut: () => void;
 };
 
-export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggleSound, onLoggedOut }: Props) => {
+export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggleSound, push, onLoggedOut }: Props) => {
   const apiRequest = useApi();
   const logout = async () => {
     await apiRequest("/api/staff/logout", { method: "POST", body: { role } });
@@ -39,7 +42,8 @@ export const StaffHeader = ({ role, restaurantName, personName, soundOn, onToggl
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {push && <PushToggle role={role} />}
           {onToggleSound && (
             <button
               type="button"

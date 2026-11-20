@@ -1,0 +1,11 @@
+{
+  "name": "Pede Aí",
+  "short_name": "Pede Aí",
+  "description": "Pedidos pela mesa, comanda por pessoa e conta dividida.",
+  "start_url": "/conta",
+  "display": "standalone",
+  "background_color": "#0f0c0a",
+  "theme_color": "#c43d16",
+  "lang": "pt-BR",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

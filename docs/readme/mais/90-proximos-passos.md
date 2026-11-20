@@ -17,7 +17,8 @@
 - [x] Privacidade: página `/privacidade` e limpeza diária de nomes e recados das mesas antigas.
 - [x] Limite de códigos de mesa errados por endereço de internet.
 - [x] Números por período e planilhas em CSV para o gerente.
+- [x] Avisos no celular do garçom (Web Push).
 - [x] Página inicial de apresentação.
 - [x] Sem demonstração pública: usar e testar é pelo fluxo real (conta, restaurante, equipe).
 - [x] Nova identidade visual, com o espaço das fotos do cardápio pronto.
-- [ ] Fase 2: fotos, tempo real, LGPD, Pix, notificações e nota fiscal.
+- [ ] Fase 2: fotos, tempo real, Pix e nota fiscal.

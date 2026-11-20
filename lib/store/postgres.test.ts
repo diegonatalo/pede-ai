@@ -2,16 +2,18 @@
 import { existsSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { beforeEach, describe, expect, it } from "vitest";
-import { sampleRestaurantData } from "@/lib/restaurant-template";
+import { newRestaurantData, sampleRestaurantData } from "@/lib/restaurant-template";
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
 import { describeIsolationContract } from "@/lib/store/isolation-contract";
 import {
   createPostgresDb,
+  createPostgresPushStore,
   createPostgresRateLimiter,
   createPostgresRegistry,
   createPostgresRepository,
 } from "@/lib/store/postgres";
+import { describePushStoreContract } from "@/lib/store/push-contract";
 import { describeRateLimiterContract } from "@/lib/store/rate-limit-contract";
 import { describeStoreContract } from "@/lib/store/store-contract";
 
@@ -25,7 +27,7 @@ const SAMPLE = { restaurantId: RESTAURANT.id };
 describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", () => {
   beforeEach(async () => {
     const sql = neon(url as string);
-    await sql`TRUNCATE rate_limits, events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
+    await sql`TRUNCATE push_subscriptions, rate_limits, events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
       menu_items, menu_categories, map_spots, dining_tables, restaurants RESTART IDENTITY CASCADE`;
     // O app não cria restaurante sozinho: cada teste começa com o restaurante de exemplo.
     expect(await createPostgresRegistry(url as string).create(sampleRestaurantData())).toBe(true);
@@ -34,6 +36,23 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
   describeStoreContract((options) => createStore(createPostgresRepository(url as string, SAMPLE), options));
 
   describeRateLimiterContract((config) => createPostgresRateLimiter(url as string, config));
+
+  describe("com um segundo restaurante", () => {
+    beforeEach(async () => {
+      let counter = 0;
+      const second = newRestaurantData({
+        id: "rest-b",
+        slug: "cantina-b",
+        name: "Cantina B",
+        ownerUserId: "user-b",
+        owner: { staffId: "dono-b", name: "Dono B", pin: "707070" },
+        createdAt: "2026-11-20T00:00:00.000Z",
+        newId: () => `push-b-${++counter}`,
+      });
+      expect(await createPostgresRegistry(url as string).create(second)).toBe(true);
+    });
+    describePushStoreContract(() => createPostgresPushStore(url as string));
+  });
 
   // Dois restaurantes no mesmo banco, numa conexão só (como no app).
   describeIsolationContract(() => {
