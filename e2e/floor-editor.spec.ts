@@ -36,6 +36,9 @@ test("o gerente cria e tira mesas do salão e ajusta o mapa", async ({ page, res
   await page.getByRole("button", { name: "Entrada", exact: true }).click();
   await page.getByRole("button", { name: "Tirar do mapa" }).click();
   await page.getByRole("button", { name: "Salvar mapa" }).click();
+  // Salvo e relido do servidor: o aviso de mudanças pendentes some (o botão também fica desabilitado
+  // durante o envio, então ele sozinho não prova que terminou).
+  await expect(page.getByText("Há mudanças não salvas.")).toHaveCount(0, { timeout: 10_000 });
   await expect(page.getByRole("button", { name: "Salvar mapa" })).toBeDisabled();
 
   const overview = await (await page.request.get(api("/api/staff/overview?role=manager"))).json();

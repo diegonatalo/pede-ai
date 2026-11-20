@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
@@ -123,6 +124,11 @@ export const SignInForm = ({ onSignedIn }: Props) => {
             Esqueceu a senha? Por enquanto, fale com o suporte do Pede Aí para redefinir.
           </p>
         )}
+        <p className="text-xs text-muted">
+          <Link href="/privacidade" className="underline hover:text-foreground">
+            Como cuidamos dos seus dados
+          </Link>
+        </p>
       </form>
     </CenteredScreen>
   );
