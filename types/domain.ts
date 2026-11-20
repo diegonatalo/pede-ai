@@ -40,7 +40,8 @@ export type Table = {
   id: string;
   restaurantId: string;
   label: string;
-  seats: number;
+  /** Mesa que saiu do salão: some das telas e do QR, mas fica para o histórico de vendas. */
+  archived: boolean;
 };
 
 export type MapSpotKind = "table" | "restroom" | "cashier" | "kitchen" | "bar" | "entrance";

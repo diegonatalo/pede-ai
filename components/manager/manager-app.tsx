@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { MapEditor } from "@/components/manager/map-editor";
 import { MenuEditor } from "@/components/manager/menu-editor";
 import { QrSheet } from "@/components/manager/qr-sheet";
 import { ReportPanel } from "@/components/manager/report-panel";
 import { SettingsForm } from "@/components/manager/settings-form";
+import { TablesEditor } from "@/components/manager/tables-editor";
 import { TeamPanel } from "@/components/manager/team-panel";
 import { StaffHeader } from "@/components/staff/staff-header";
 import { StaffLogin } from "@/components/staff/staff-login";
@@ -111,15 +113,47 @@ export const ManagerApp = () => {
         {section === "menu" && <MenuEditor menu={data.menu} busy={busy} run={run} />}
         {section === "team" && <TeamPanel meId={data.me?.staffId} />}
         {section === "settings" && (
-          <div className="flex flex-col gap-8">
-            <div className="print:hidden">
+          <div className="flex flex-col gap-10">
+            <section aria-labelledby="titulo-mesas" className="flex flex-col gap-4 print:hidden">
+              <h2 id="titulo-mesas" className="text-xl font-bold">
+                Mesas
+              </h2>
+              <TablesEditor
+                tables={data.tables}
+                openTableIds={new Set(data.sessions.map((entry) => entry.session.tableId))}
+                busy={busy}
+                run={run}
+              />
+            </section>
+            <section aria-labelledby="titulo-mapa" className="flex flex-col gap-4 print:hidden">
+              <div>
+                <h2 id="titulo-mapa" className="text-xl font-bold">
+                  Mapa do salão
+                </h2>
+                <p className="text-sm text-muted">
+                  Opcional. Ajuda o cliente a achar a mesa, o banheiro e o caixa. Em cima fica o fundo; embaixo, a entrada.
+                </p>
+              </div>
+              <MapEditor
+                // Recomeça do que está salvo quando o mapa ou as mesas mudam no servidor.
+                key={JSON.stringify([data.mapSpots, data.tables.map((table) => table.id)])}
+                tables={data.tables}
+                spots={data.mapSpots}
+                busy={busy === "mapa"}
+                run={run}
+              />
+            </section>
+            <section aria-labelledby="titulo-ajustes" className="flex flex-col gap-4 print:hidden">
+              <h2 id="titulo-ajustes" className="text-xl font-bold">
+                Taxa, couvert e pedidos
+              </h2>
               <SettingsForm
                 // Recria o formulário só quando a configuração muda (não a cada pedido, o que apagaria o que está sendo digitado).
                 key={`${data.restaurant.serviceFeePercent}-${data.restaurant.couvertCents}-${data.restaurant.requireFirstOrderApproval}`}
                 restaurant={data.restaurant}
                 onSaved={refresh}
               />
-            </div>
+            </section>
             <section aria-labelledby="titulo-qr" className="flex flex-col gap-4">
               <h2 id="titulo-qr" className="text-xl font-bold print:hidden">
                 QR codes das mesas

@@ -73,7 +73,7 @@ const toTable = (row: typeof diningTables.$inferSelect): Table => ({
   id: row.id,
   restaurantId: row.restaurantId,
   label: row.label,
-  seats: row.seats,
+  archived: row.archived,
 });
 
 const toSpot = (row: typeof mapSpots.$inferSelect): MapSpot => ({
@@ -227,8 +227,6 @@ export const createPostgresRepository = (
     db.select({ id: tableSessions.id }).from(tableSessions).where(eq(tableSessions.restaurantId, restaurantId));
 
   // Mesas, mapa e categorias não mudam com o app rodando: ficam guardados no processo.
-  let tablesCache: Table[] | null = null;
-  let spotsCache: MapSpot[] | null = null;
 
   const loadRecords = async (condition: SQL): Promise<SessionRecord[]> => {
     // Nunca carrega mesa de outro restaurante, nem pelo id.
@@ -265,22 +263,50 @@ export const createPostgresRepository = (
       ]);
     },
 
+    // Sem cache: o gerente edita o salão, e cada instância da Vercel precisa ver a mudança.
     async listTables() {
-      tablesCache ??= (
-        await db
-          .select()
-          .from(diningTables)
-          .where(eq(diningTables.restaurantId, restaurantId))
-          .orderBy(asc(diningTables.position))
-      ).map(toTable);
-      return structuredClone(tablesCache);
+      const rows = await db
+        .select()
+        .from(diningTables)
+        .where(eq(diningTables.restaurantId, restaurantId))
+        .orderBy(asc(diningTables.position));
+      return rows.map(toTable);
     },
 
     async listMapSpots() {
-      spotsCache ??= (
-        await db.select().from(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)).orderBy(asc(mapSpots.position))
-      ).map(toSpot);
-      return structuredClone(spotsCache);
+      const rows = await db
+        .select()
+        .from(mapSpots)
+        .where(eq(mapSpots.restaurantId, restaurantId))
+        .orderBy(asc(mapSpots.position));
+      return rows.map(toSpot);
+    },
+
+    async saveFloor(floor, event) {
+      const ownTable = eq(diningTables.restaurantId, restaurantId);
+      const ownSpot = eq(mapSpots.restaurantId, restaurantId);
+      const spotIds = floor.mapSpots.map((spot) => spot.id);
+      const writes: BatchItem<"pg">[] = [];
+      // Mesas não são apagadas (as sessões antigas apontam para elas): arquivar é marcar `archived`.
+      if (floor.tables.length > 0) {
+        writes.push(
+          db
+            .insert(diningTables)
+            .values(floor.tables.map((table, position) => ({ ...table, restaurantId, position })))
+            .onConflictDoUpdate({ target: diningTables.id, set: replaceAll(diningTables, ["id"]), setWhere: ownTable }),
+        );
+      }
+      writes.push(db.delete(mapSpots).where(spotIds.length > 0 ? and(ownSpot, notInArray(mapSpots.id, spotIds)) : ownSpot));
+      if (floor.mapSpots.length > 0) {
+        writes.push(
+          db
+            .insert(mapSpots)
+            .values(floor.mapSpots.map((spot, position) => ({ ...spot, tableId: spot.tableId ?? null, restaurantId, position })))
+            .onConflictDoUpdate({ target: mapSpots.id, set: replaceAll(mapSpots, ["id"]), setWhere: ownSpot }),
+        );
+      }
+      writes.push(db.insert(events).values(eventRow(event, restaurantId)));
+      await db.batch(writes as Batch);
     },
 
     async getMenu() {

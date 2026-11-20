@@ -1,4 +1,5 @@
 import type { SharesError } from "@/lib/billing";
+import type { Floor, FloorChange } from "@/lib/floor-editor";
 import type { MenuChange } from "@/lib/menu-editor";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import type {
@@ -43,6 +44,12 @@ export type StoreError =
   | "category_not_empty"
   /** Cardápio no limite de categorias ou de itens. */
   | "menu_full"
+  /** Já existe uma mesa com esse nome. */
+  | "duplicate_label"
+  /** Salão no limite de mesas ou de pontos no mapa. */
+  | "floor_full"
+  /** Mesa aberta agora não pode sair do salão. */
+  | "table_in_use"
   | SharesError;
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: StoreError };
@@ -58,6 +65,7 @@ export type EventType =
   | "item_shares_changed"
   | "item_availability_changed"
   | "menu_updated"
+  | "floor_updated"
   | "call_created"
   | "call_status_changed"
   | "restaurant_updated"
@@ -103,12 +111,15 @@ export type RestaurantSettings = Partial<
 export type Store = {
   getRestaurant(): Promise<Restaurant>;
   updateRestaurant(settings: RestaurantSettings, actor: Actor): Promise<Result<Restaurant>>;
+  /** Mesas em uso, na ordem do salão. */
   listTables(): Promise<Table[]>;
   listMapSpots(): Promise<MapSpot[]>;
   getMenu(): Promise<Menu>;
   setItemAvailability(menuItemId: string, available: boolean, actor: Actor): Promise<Result<MenuItem>>;
   /** Gerente cria, edita, ordena ou exclui itens e categorias. Devolve o cardápio novo. */
   editMenu(change: MenuChange, actor: Actor): Promise<Result<Menu>>;
+  /** Gerente cria, renomeia, ordena e arquiva mesas, e desenha o mapa. Devolve o salão em uso. */
+  editFloor(change: FloorChange, actor: Actor): Promise<Result<{ tables: Table[]; mapSpots: MapSpot[] }>>;
 
   openSession(tableId: string, joinCode: string, actor: Actor): Promise<Result<TableSession>>;
   /** Código da mesa, para o garçom mostrar ao cliente. */
@@ -198,8 +209,11 @@ export type SessionRef = { openAtTable: string } | { tabId: string } | { itemId:
 export type Repository = {
   getRestaurant(): Promise<Restaurant>;
   saveRestaurant(restaurant: Restaurant, event: NewEvent): Promise<void>;
+  /** Todas as mesas, inclusive as arquivadas (o histórico precisa delas). */
   listTables(): Promise<Table[]>;
   listMapSpots(): Promise<MapSpot[]>;
+  /** Troca mesas e mapa de uma vez (a ordem das mesas é a ordem do salão). */
+  saveFloor(floor: Floor, event: NewEvent): Promise<void>;
   getMenu(): Promise<Menu>;
   saveMenuItem(item: MenuItem, event: NewEvent): Promise<void>;
   /** Troca o cardápio inteiro (a ordem das listas é a ordem de exibição), numa gravação só. */

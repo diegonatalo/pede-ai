@@ -5,11 +5,13 @@ import { useFeed } from "@/hooks/use-feed";
 import type { StaffRole } from "@/lib/api/identity";
 import { useApi } from "@/hooks/use-restaurant";
 import type { Api } from "@/lib/api-client";
-import type { Restaurant, Table } from "@/types/domain";
+import type { MapSpot, Restaurant, Table } from "@/types/domain";
 import type { Menu, SessionSnapshot } from "@/types/store";
 
 export type StaffOverview = {
   tables: Table[];
+  /** Mapa do salão (vazio quando o restaurante não usa mapa). */
+  mapSpots: MapSpot[];
   sessions: SessionSnapshot[];
   menu: Menu;
   restaurant: Restaurant;
