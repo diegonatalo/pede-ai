@@ -1,8 +1,16 @@
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
-import { createMemoryRegistry, createMemoryRepository, createMemoryWorld, type MemoryWorld } from "@/lib/store/memory";
+import type { RateLimiter } from "@/lib/rate-limit";
+import {
+  createMemoryRateLimiter,
+  createMemoryRegistry,
+  createMemoryRepository,
+  createMemoryWorld,
+  type MemoryWorld,
+} from "@/lib/store/memory";
 import {
   createPostgresDb,
+  createPostgresRateLimiter,
   createPostgresRegistry,
   createPostgresRepository,
   type Db,
@@ -16,6 +24,7 @@ const holder = globalThis as typeof globalThis & {
   __pedeAiStores?: Map<string, Store>;
   __pedeAiPostgresDb?: Db;
   __pedeAiPostgresStores?: Map<string, Store>;
+  __pedeAiRateLimiter?: RateLimiter;
 };
 
 const methodsOf = (store: Store) => Object.keys(store).sort().join(",");
@@ -74,6 +83,15 @@ export const getStore = (restaurantId: string): Store => {
     holder.__pedeAiStores.set(restaurantId, store);
   }
   return store;
+};
+
+/** Limite de códigos de mesa errados por endereço de internet (todas as mesas e restaurantes). */
+export const getRateLimiter = (): RateLimiter => {
+  if (storeKind(process.env) === "postgres") {
+    return createPostgresRateLimiter(process.env.DATABASE_URL as string, { db: postgresDb() });
+  }
+  holder.__pedeAiRateLimiter ??= createMemoryRateLimiter();
+  return holder.__pedeAiRateLimiter;
 };
 
 /** Cadastro dos restaurantes (achar pelo endereço ou pelo dono, criar um novo). */

@@ -6,7 +6,13 @@ import { sampleRestaurantData } from "@/lib/restaurant-template";
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
 import { describeIsolationContract } from "@/lib/store/isolation-contract";
-import { createPostgresDb, createPostgresRegistry, createPostgresRepository } from "@/lib/store/postgres";
+import {
+  createPostgresDb,
+  createPostgresRateLimiter,
+  createPostgresRegistry,
+  createPostgresRepository,
+} from "@/lib/store/postgres";
+import { describeRateLimiterContract } from "@/lib/store/rate-limit-contract";
 import { describeStoreContract } from "@/lib/store/store-contract";
 
 // Banco de TESTE, nunca o de produção: cada teste apaga todas as tabelas.
@@ -19,13 +25,15 @@ const SAMPLE = { restaurantId: RESTAURANT.id };
 describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", () => {
   beforeEach(async () => {
     const sql = neon(url as string);
-    await sql`TRUNCATE events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
+    await sql`TRUNCATE rate_limits, events, waiter_calls, order_items, orders, tabs, table_sessions, staff_members,
       menu_items, menu_categories, map_spots, dining_tables, restaurants RESTART IDENTITY CASCADE`;
     // O app não cria restaurante sozinho: cada teste começa com o restaurante de exemplo.
     expect(await createPostgresRegistry(url as string).create(sampleRestaurantData())).toBe(true);
   });
 
   describeStoreContract((options) => createStore(createPostgresRepository(url as string, SAMPLE), options));
+
+  describeRateLimiterContract((config) => createPostgresRateLimiter(url as string, config));
 
   // Dois restaurantes no mesmo banco, numa conexão só (como no app).
   describeIsolationContract(() => {

@@ -50,6 +50,13 @@
       "when": 1795184332147,
       "tag": "0006_drop_table_seats",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795187761916,
+      "tag": "0007_rate_limits",
+      "breakpoints": true
     }
   ]
 }

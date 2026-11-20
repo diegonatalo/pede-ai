@@ -36,18 +36,26 @@ export const getTableStatus = async (store: Store, tableId: string): Promise<Api
   return success({ table, open: session !== null });
 };
 
+/** Limite de códigos errados de quem está tentando (o endereço de internet), em todas as mesas. */
+export type JoinGuard = { isBlocked: () => Promise<boolean>; recordFailure: () => Promise<void> };
+
 export const joinTable = async (
   store: Store,
   identity: Identity,
   tableId: string,
   body: unknown,
   now: number,
+  guard?: JoinGuard,
 ): Promise<ApiResult> => {
   if (!isRecord(body) || typeof body.code !== "string") return error("invalid_input");
+  if (guard && (await guard.isBlocked())) return error("locked");
   const session = await store.getOpenSessionByTable(tableId);
   if (!session) return error("session_closed");
   const verified = await store.verifyJoinCode(session.id, body.code.trim());
-  if (!verified.ok) return error(verified.error);
+  if (!verified.ok) {
+    if (verified.error === "wrong_code") await guard?.recordFailure();
+    return error(verified.error);
+  }
   // Quem já estava nesta mesa mantém as comandas; outra mesa começa do zero.
   const tabIds = identity?.sessionId === session.id ? identity.tabIds : [];
   return success({ sessionId: session.id }, { customer: renew({ sessionId: session.id, tabIds }, now) });
