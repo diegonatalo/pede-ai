@@ -31,6 +31,7 @@ Todas são opcionais no computador: sem banco, os dados ficam na memória do ser
 | `PEDE_AI_STORE` | `postgres` para usar o banco no computador. Fora da Vercel, o padrão é a memória, para o `pnpm dev` e o E2E não gravarem no banco de produção. | Memória |
 | `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
 | `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe e, sem `BETTER_AUTH_SECRET`, também as sessões das contas. **Obrigatória na Vercel**: lá há várias instâncias, e cada uma geraria a própria chave. | Gera uma chave aleatória a cada início do servidor |
+| `CRON_SECRET` | Senha da rotina diária de privacidade (`/api/cron/privacy`). Vai na Vercel e, com o mesmo valor, nos segredos do repositório no GitHub: o workflow `privacy-cleanup.yml` chama a rota todo dia às 6h de Brasília. | A limpeza não roda |
 | `BETTER_AUTH_SECRET` | Chave só do login das contas (Better Auth), se quiser separada da `SESSION_SECRET`. | Usa a `SESSION_SECRET` |
 | `BETTER_AUTH_URL` | Endereço do site para o login, se for diferente do `NEXT_PUBLIC_SITE_URL`. | Na Vercel, o endereço do site; no computador, `localhost` em qualquer porta |
 | `NEXT_PUBLIC_SITE_URL` | URL pública do site, usada nas tags Open Graph, no `robots.txt` e no `sitemap.xml`. Sem barra no final. | Usa `https://dn-pede-ai.vercel.app` |

@@ -262,4 +262,10 @@ export type RestaurantRegistry = {
   create(data: RestaurantData): Promise<boolean>;
   /** Apaga o restaurante e tudo dele (salão, cardápio, equipe, mesas, pedidos, eventos). Não tem volta. */
   remove(restaurantId: string): Promise<void>;
+  /**
+   * LGPD: nas mesas fechadas antes de `cutoff` (ISO), em todos os restaurantes, troca o nome das
+   * comandas por "Cliente" e apaga observações e recados. Valores e horários ficam para os números.
+   * Devolve quantas comandas mudaram.
+   */
+  anonymizeClosedBefore(cutoff: IsoDateTime): Promise<number>;
 };

@@ -144,6 +144,39 @@ export const describeIsolationContract = (makeWorld: () => TenantWorld) => {
       expect(unwrap(await a.verifyStaffPin("2222")).id).toBe("staff-demo-waiter");
     });
 
+    it("apaga nomes, observações e recados só das mesas fechadas antes do prazo", async () => {
+      const { world, a, b, session, tab, item } = await setup();
+      // Mesa de A com observação e recado, fechada; mesa de B continua aberta.
+      unwrap(await a.createCall({ sessionId: session.id, reason: "other", message: "sem glúten?" }, "customer"));
+      const second = unwrap(await a.createTab({ sessionId: session.id, customerName: "Rui", peopleCount: 1 }, "waiter"));
+      const noted = unwrap(
+        await a.placeOrder({ tabId: second.id, lines: [{ menuItemId: "cafe", quantity: 1, note: "sem açúcar" }] }, "waiter"),
+      );
+      for (const id of [tab.id, second.id]) unwrap(await a.setTabStatus(id, "paid", "waiter"));
+      unwrap(await a.setItemStatus(item.id, "canceled", "waiter"));
+      unwrap(await a.setItemStatus(noted.items[0].id, "canceled", "waiter"));
+      unwrap(await a.closeSession(session.id, "waiter"));
+      const [tableB] = await b.listTables();
+      const openB = unwrap(await b.openSession(tableB.id, "4321", "manager"));
+      unwrap(await b.createTab({ sessionId: openB.id, customerName: "Zé", peopleCount: 1 }, "manager"));
+
+      // Prazo antes do fechamento: nada muda.
+      expect(await world.registry.anonymizeClosedBefore("2000-01-01T00:00:00.000Z")).toBe(0);
+      const history = async () => unwrap(await a.listSessionsSince("2000-01-01T00:00:00.000Z", "manager"));
+      expect((await history())[0].tabs.map((entry) => entry.customerName)).toEqual(["Ana", "Rui"]);
+
+      // Prazo depois do fechamento: nomes viram "Cliente", observação e recado somem, valores ficam.
+      expect(await world.registry.anonymizeClosedBefore("2999-01-01T00:00:00.000Z")).toBe(2);
+      const [closed] = await history();
+      expect(closed.tabs.map((entry) => entry.customerName)).toEqual(["Cliente", "Cliente"]);
+      expect(closed.items.every((entry) => entry.note === undefined)).toBe(true);
+      expect(closed.calls.every((entry) => entry.message === undefined)).toBe(true);
+      expect(closed.items.map((entry) => entry.unitPriceCents).every((cents) => cents > 0)).toBe(true);
+      // Rodar de novo não muda nada; a mesa aberta de B fica como está.
+      expect(await world.registry.anonymizeClosedBefore("2999-01-01T00:00:00.000Z")).toBe(0);
+      expect((await b.listOpenSessions())[0].tabs.map((entry) => entry.customerName)).toEqual(["Zé"]);
+    });
+
     it("mudar a configuração de um não muda a do outro", async () => {
       const { a, b } = await setup();
       unwrap(await b.updateRestaurant({ serviceFeePercent: 12 }, "manager"));

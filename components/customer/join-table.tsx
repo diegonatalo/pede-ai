@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { useApi } from "@/hooks/use-restaurant";
@@ -110,6 +111,12 @@ export const JoinTable = ({ tableId, onJoined }: Props) => {
       <button type="submit" className={BUTTON.primary} disabled={sending || code.length !== 4}>
         {sending ? "Entrando…" : "Entrar na mesa"}
       </button>
+      <p className="text-center text-xs text-muted">
+        O nome da comanda fica guardado só para o pedido e a conta.{" "}
+        <Link href="/privacidade" className="underline hover:text-foreground">
+          Privacidade
+        </Link>
+      </p>
     </form>
   );
 };

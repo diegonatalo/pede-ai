@@ -1,8 +1,26 @@
-import { and, asc, eq, getTableColumns, gt, gte, inArray, isNull, max, notInArray, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  max,
+  ne,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
 import * as schema from "@/lib/db/schema";
+import { ANONYMOUS_NAME } from "@/lib/privacy";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
@@ -620,6 +638,25 @@ export const createPostgresRegistry = (
         db.delete(diningTables).where(eq(diningTables.restaurantId, restaurantId)),
         db.delete(restaurants).where(eq(restaurants.id, restaurantId)),
       ]);
+    },
+    async anonymizeClosedBefore(cutoff) {
+      const old = db
+        .select({ id: tableSessions.id })
+        .from(tableSessions)
+        .where(and(eq(tableSessions.status, "closed"), lt(tableSessions.closedAt, cutoff)));
+      const [renamed] = await db.batch([
+        db
+          .update(tabs)
+          .set({ customerName: ANONYMOUS_NAME })
+          .where(and(inArray(tabs.sessionId, old), ne(tabs.customerName, ANONYMOUS_NAME)))
+          .returning({ id: tabs.id }),
+        db.update(orderItems).set({ note: null }).where(and(inArray(orderItems.sessionId, old), isNotNull(orderItems.note))),
+        db
+          .update(waiterCalls)
+          .set({ message: null })
+          .where(and(inArray(waiterCalls.sessionId, old), isNotNull(waiterCalls.message))),
+      ]);
+      return renamed.length;
     },
   };
 };

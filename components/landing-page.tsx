@@ -212,11 +212,16 @@ export const LandingPage = () => (
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-8 text-sm text-muted sm:flex-row sm:justify-between">
         <p>{SITE_NAME} · pedidos pela mesa, comanda por pessoa.</p>
-        <p>
-          Fotos:{" "}
-          <a href="https://unsplash.com" className="underline hover:text-foreground" rel="noopener noreferrer">
-            Unsplash
-          </a>
+        <p className="flex flex-wrap gap-x-4">
+          <Link href="/privacidade" className="underline hover:text-foreground">
+            Privacidade
+          </Link>
+          <span>
+            Fotos:{" "}
+            <a href="https://unsplash.com" className="underline hover:text-foreground" rel="noopener noreferrer">
+              Unsplash
+            </a>
+          </span>
         </p>
       </div>
     </footer>

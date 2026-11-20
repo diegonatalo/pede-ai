@@ -1,0 +1,29 @@
+name: Limpeza de dados pessoais
+
+# Todo dia às 9h UTC (6h em Brasília). Apaga nomes das comandas, observações e recados das mesas
+# fechadas há mais de 30 dias (LGPD). O `vercel.json` segue o modelo do standard-kit, por isso o
+# agendamento fica aqui e não no Vercel Cron.
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Apagar dados pessoais antigos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar a rota de limpeza
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::notice::Defina o segredo CRON_SECRET no GitHub e na Vercel para ligar a limpeza diária."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 60 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            https://dn-pede-ai.vercel.app/api/cron/privacy

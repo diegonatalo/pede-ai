@@ -1,4 +1,5 @@
 import { sampleRestaurantData, type RestaurantData } from "@/lib/restaurant-template";
+import { ANONYMOUS_NAME } from "@/lib/privacy";
 import { RESTAURANT } from "@/lib/seed-data";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import { createStore, type EngineOptions } from "@/lib/store/engine";
@@ -268,6 +269,24 @@ export const createMemoryRegistry = (world: MemoryWorld): RestaurantRegistry => 
     },
     async remove(restaurantId) {
       world.restaurants.delete(restaurantId);
+    },
+    async anonymizeClosedBefore(cutoff) {
+      let changed = 0;
+      for (const state of world.restaurants.values()) {
+        for (const record of state.sessions.values()) {
+          const { closedAt } = record.session;
+          if (record.session.status !== "closed" || !closedAt || closedAt >= cutoff) continue;
+          for (const tab of record.tabs) {
+            if (tab.customerName !== ANONYMOUS_NAME) {
+              tab.customerName = ANONYMOUS_NAME;
+              changed += 1;
+            }
+          }
+          for (const item of record.items) delete item.note;
+          for (const call of record.calls) delete call.message;
+        }
+      }
+      return changed;
     },
   };
 };
