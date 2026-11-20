@@ -600,5 +600,26 @@ export const createPostgresRegistry = (
         throw error;
       }
     },
+    async remove(restaurantId) {
+      const sessions = db
+        .select({ id: tableSessions.id })
+        .from(tableSessions)
+        .where(eq(tableSessions.restaurantId, restaurantId));
+      // Numa transação, dos filhos para os pais (as chaves estrangeiras não apagam em cascata).
+      await db.batch([
+        db.delete(orderItems).where(inArray(orderItems.sessionId, sessions)),
+        db.delete(orders).where(inArray(orders.sessionId, sessions)),
+        db.delete(waiterCalls).where(inArray(waiterCalls.sessionId, sessions)),
+        db.delete(tabs).where(inArray(tabs.sessionId, sessions)),
+        db.delete(tableSessions).where(eq(tableSessions.restaurantId, restaurantId)),
+        db.delete(events).where(eq(events.restaurantId, restaurantId)),
+        db.delete(staffMembers).where(eq(staffMembers.restaurantId, restaurantId)),
+        db.delete(menuItems).where(eq(menuItems.restaurantId, restaurantId)),
+        db.delete(menuCategories).where(eq(menuCategories.restaurantId, restaurantId)),
+        db.delete(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)),
+        db.delete(diningTables).where(eq(diningTables.restaurantId, restaurantId)),
+        db.delete(restaurants).where(eq(restaurants.id, restaurantId)),
+      ]);
+    },
   };
 };

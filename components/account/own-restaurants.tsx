@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { CreateRestaurantForm } from "@/components/account/create-restaurant-form";
-import { BUTTON, CARD } from "@/components/ui/styles";
+import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { useOwnRestaurants } from "@/hooks/use-own-restaurants";
 import { cn } from "@/lib/cn";
 import { apiRequest } from "@/lib/api-client";
@@ -112,6 +112,7 @@ export const OwnRestaurants = () => {
                   Cozinha
                 </Link>
               </div>
+              <DeleteRestaurant restaurant={restaurant} onDeleted={() => void refresh()} />
             </li>
           ))}
         </ul>
@@ -123,8 +124,8 @@ export const OwnRestaurants = () => {
             {state.restaurants.length === 0 ? "Cadastre o seu restaurante" : "Cadastrar outro restaurante"}
           </h2>
           <p className="text-sm text-muted">
-            Ele começa com um salão e um cardápio de exemplo, para você testar tudo. A edição do cardápio
-            e das mesas chega nas próximas versões.
+            Ele começa com um salão e um cardápio de exemplo, para você testar tudo. Depois, troque pelo seu na tela do
+            gerente, em Cardápio e em Ajustes.
           </p>
           <CreateRestaurantForm
             onCreated={(restaurant, pin) => {
@@ -137,5 +138,77 @@ export const OwnRestaurants = () => {
         <p className="text-sm text-muted">Cada conta pode ter até {MAX_RESTAURANTS_PER_OWNER} restaurantes por enquanto.</p>
       )}
     </div>
+  );
+};
+
+/** Excluir um restaurante: escondido atrás de um "Excluir", e pede o endereço digitado de novo. */
+const DeleteRestaurant = ({ restaurant, onDeleted }: { restaurant: RestaurantRecord; onDeleted: () => void }) => {
+  const [open, setOpen] = useState(false);
+  const [confirm, setConfirm] = useState("");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className={`${BUTTON.smallGhost} self-start text-danger`}
+        onClick={() => setOpen(true)}
+        aria-label={`Excluir ${restaurant.name}`}
+      >
+        Excluir restaurante
+      </button>
+    );
+  }
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setSending(true);
+    setMessage("");
+    const response = await apiRequest("/api/account/restaurants/delete", {
+      method: "POST",
+      body: { slug: restaurant.slug, confirm: confirm.trim() },
+    });
+    setSending(false);
+    if (response.ok) onDeleted();
+    else setMessage(response.message);
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="flex flex-col gap-3 rounded-2xl bg-danger-soft p-4"
+      aria-label={`Excluir ${restaurant.name} para sempre`}
+    >
+      <p className="text-sm font-medium text-danger">
+        Isso apaga o restaurante e tudo dele: cardápio, mesas, equipe, pedidos e números. Não tem como desfazer.
+      </p>
+      <label className="flex flex-col gap-1">
+        <span className={LABEL}>
+          Para confirmar, digite <span className="font-mono">{restaurant.slug}</span>
+        </span>
+        <input className={INPUT} value={confirm} onChange={(event) => setConfirm(event.target.value)} autoComplete="off" />
+      </label>
+      {message && (
+        <p className="text-sm font-medium text-danger" role="alert">
+          {message}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        <button type="submit" className={BUTTON.danger} disabled={sending || confirm.trim() !== restaurant.slug}>
+          {sending ? "Excluindo…" : "Excluir para sempre"}
+        </button>
+        <button
+          type="button"
+          className={BUTTON.ghost}
+          onClick={() => {
+            setOpen(false);
+            setConfirm("");
+          }}
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 };

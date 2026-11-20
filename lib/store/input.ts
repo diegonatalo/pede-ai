@@ -8,6 +8,7 @@ export const LIMITS = {
   peopleCount: 20,
   quantity: 20,
   linesPerOrder: 30,
+  restaurantName: 60,
   serviceFeePercent: 30,
   couvertCents: 10_000,
   joinAttempts: 5,

@@ -2,10 +2,11 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { drizzle } from "drizzle-orm/neon-http";
+import { deleteOwnedRestaurants } from "@/lib/api/account";
 import { authBaseURL, authSecret, missingSecretOnVercel } from "@/lib/auth/config";
 import { authAccounts, authSessions, authUsers, authVerifications } from "@/lib/db/schema";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
-import { storeKind } from "@/lib/store";
+import { getRegistry, storeKind } from "@/lib/store";
 
 type Env = Record<string, string | undefined>;
 
@@ -37,6 +38,15 @@ export const createAuth = (env: Env = process.env) => {
     // Limite de tentativas só na Vercel. No `next start` local (E2E), todos os testes vêm do mesmo
     // endereço e criariam contas mais rápido que o limite de cadastro (3 a cada 10 s).
     rateLimit: { enabled: Boolean(env.VERCEL) },
+    user: {
+      // A pessoa apaga a própria conta confirmando a senha; os restaurantes dela vão junto (LGPD).
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (user) => {
+          await deleteOwnedRestaurants(getRegistry(), user.id);
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,

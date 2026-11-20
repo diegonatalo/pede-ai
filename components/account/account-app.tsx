@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteAccount } from "@/components/account/delete-account";
 import { OwnRestaurants } from "@/components/account/own-restaurants";
 import { SignInForm } from "@/components/account/sign-in-form";
 import { BUTTON, CARD } from "@/components/ui/styles";
@@ -34,6 +35,15 @@ export const AccountApp = () => {
       </section>
       <section className={`${CARD} p-6`} aria-label="Restaurantes">
         <OwnRestaurants />
+      </section>
+      <section className={`${CARD} flex flex-col gap-3 p-6`} aria-labelledby="titulo-privacidade">
+        <h2 id="titulo-privacidade" className="text-lg font-bold">
+          Seus dados
+        </h2>
+        <p className="text-sm text-muted">
+          Você pode excluir a conta quando quiser. Os restaurantes dela e tudo o que eles guardam são apagados junto.
+        </p>
+        <DeleteAccount onDeleted={() => void refresh()} />
       </section>
     </main>
   );

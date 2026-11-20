@@ -145,11 +145,11 @@ export const ManagerApp = () => {
             </section>
             <section aria-labelledby="titulo-ajustes" className="flex flex-col gap-4 print:hidden">
               <h2 id="titulo-ajustes" className="text-xl font-bold">
-                Taxa, couvert e pedidos
+                Restaurante, taxa e couvert
               </h2>
               <SettingsForm
                 // Recria o formulário só quando a configuração muda (não a cada pedido, o que apagaria o que está sendo digitado).
-                key={`${data.restaurant.serviceFeePercent}-${data.restaurant.couvertCents}-${data.restaurant.requireFirstOrderApproval}`}
+                key={`${data.restaurant.name}-${data.restaurant.serviceFeePercent}-${data.restaurant.couvertCents}-${data.restaurant.requireFirstOrderApproval}`}
                 restaurant={data.restaurant}
                 onSaved={refresh}
               />

@@ -131,6 +131,19 @@ export const describeIsolationContract = (makeWorld: () => TenantWorld) => {
       );
     });
 
+    it("apagar um restaurante leva tudo dele e não mexe no outro", async () => {
+      const { world, a, b, session } = await setup();
+      const [tableB] = await b.listTables();
+      unwrap(await b.openSession(tableB.id, "4321", "manager"));
+      await world.registry.remove("rest-b");
+      expect(await world.registry.findBySlug("cantina-b")).toBeNull();
+      expect(await world.registry.listByOwner("user-b")).toEqual([]);
+      // A continua inteira.
+      expect((await a.listOpenSessions()).map((entry) => entry.session.id)).toEqual([session.id]);
+      expect((await a.getMenu()).items.length).toBeGreaterThan(0);
+      expect(unwrap(await a.verifyStaffPin("2222")).id).toBe("staff-demo-waiter");
+    });
+
     it("mudar a configuração de um não muda a do outro", async () => {
       const { a, b } = await setup();
       unwrap(await b.updateRestaurant({ serviceFeePercent: 12 }, "manager"));

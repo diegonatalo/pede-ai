@@ -60,6 +60,28 @@ export const createOwnRestaurant = async (deps: AccountDeps, user: AccountUser, 
 };
 
 /**
+ * Apaga um restaurante da conta. Pede o endereço digitado de novo (`confirm`), como confirmação:
+ * não tem volta.
+ */
+export const deleteOwnRestaurant = async (
+  registry: RestaurantRegistry,
+  user: AccountUser,
+  body: unknown,
+): Promise<ApiResult> => {
+  const slug = isRecord(body) && typeof body.slug === "string" ? body.slug : "";
+  const record = slug ? await registry.findBySlug(slug) : null;
+  if (!record || record.ownerUserId !== user.id) return error("restaurant_not_found");
+  if (!isRecord(body) || body.confirm !== record.slug) return error("invalid_input");
+  await registry.remove(record.id);
+  return success({ deleted: record.slug });
+};
+
+/** Apaga todos os restaurantes da conta (antes de apagar a própria conta). */
+export const deleteOwnedRestaurants = async (registry: RestaurantRegistry, userId: string) => {
+  for (const record of await registry.listByOwner(userId)) await registry.remove(record.id);
+};
+
+/**
  * O dono entra na tela do gerente do próprio restaurante sem digitar o PIN: a conta já prova
  * quem é. Grava a tela no cookie da equipe, como o login com PIN faria.
  */

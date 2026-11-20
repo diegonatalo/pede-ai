@@ -180,6 +180,7 @@ export const setAvailability = async (
 export const updateSettings = async (store: Store, actor: StaffActor, body: unknown): Promise<ApiResult> => {
   if (!isRecord(body)) return error("invalid_input");
   const settings: RestaurantSettings = {};
+  if ("name" in body) settings.name = body.name as string;
   if ("serviceFeePercent" in body) settings.serviceFeePercent = body.serviceFeePercent as number;
   if ("couvertCents" in body) settings.couvertCents = body.couvertCents as number;
   if ("requireFirstOrderApproval" in body)

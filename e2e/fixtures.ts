@@ -152,7 +152,8 @@ export const openOwnRestaurant = async (page: Page) => {
   await page.goto("/conta");
   await page.getByRole("button", { name: "Criar conta" }).click();
   await page.getByLabel("Seu nome").fill("Dona");
-  await page.getByLabel("E-mail").fill(`dona-${id}@exemplo.com`);
+  const email = `dona-${id}@exemplo.com`;
+  await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill("senha-forte-1");
   await page.getByRole("button", { name: "Criar minha conta" }).click();
   await page.getByLabel("Nome do restaurante").fill("Casa Teste");
@@ -161,5 +162,5 @@ export const openOwnRestaurant = async (page: Page) => {
   await page.getByRole("button", { name: "Já anotei" }).click();
   await page.getByRole("button", { name: "Abrir a tela do gerente de Casa Teste" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Gerente · Dona" })).toBeVisible();
-  return slug;
+  return { slug, email, password: "senha-forte-1" };
 };
