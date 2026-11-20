@@ -7,6 +7,7 @@ import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { authClient } from "@/lib/auth/client";
 import { authErrorMessage } from "@/lib/auth/messages";
 import { cn } from "@/lib/cn";
+import { TERMS_VERSION } from "@/lib/terms";
 
 type Mode = "sign-in" | "sign-up";
 
@@ -18,6 +19,7 @@ export const SignInForm = ({ onSignedIn }: Props) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -32,7 +34,12 @@ export const SignInForm = ({ onSignedIn }: Props) => {
     setMessage("");
     const { error } =
       mode === "sign-up"
-        ? await authClient.signUp.email({ name: name.trim(), email: email.trim(), password })
+        ? await authClient.signUp.email({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+            termsVersion: acceptedTerms ? TERMS_VERSION : undefined,
+          })
         : await authClient.signIn.email({ email: email.trim(), password });
     setSending(false);
     if (error) {
@@ -110,6 +117,29 @@ export const SignInForm = ({ onSignedIn }: Props) => {
             </p>
           )}
         </div>
+
+        {mode === "sign-up" && (
+          <label className="flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-5 accent-accent"
+              required
+              checked={acceptedTerms}
+              onChange={(event) => setAcceptedTerms(event.target.checked)}
+            />
+            <span>
+              Li e aceito os{" "}
+              <Link href="/termos" target="_blank" className="font-semibold text-accent underline-offset-2 hover:underline">
+                termos de uso
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacidade" target="_blank" className="font-semibold text-accent underline-offset-2 hover:underline">
+                política de privacidade
+              </Link>
+              .
+            </span>
+          </label>
+        )}
 
         {message && (
           <p className="text-sm font-medium text-danger" role="alert">

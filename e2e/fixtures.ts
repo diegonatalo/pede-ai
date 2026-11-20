@@ -1,3 +1,4 @@
+import { TERMS_VERSION } from "@/lib/terms";
 import { test as base, expect, type APIRequestContext, type Page } from "@playwright/test";
 
 export { expect };
@@ -52,7 +53,7 @@ export const createRestaurant = async (owner: APIRequestContext, baseURL: string
   const slug = `teste-${id}`;
   const ownerName = "Dona";
   const signUp = await owner.post("/api/auth/sign-up/email", {
-    data: { name: ownerName, email: `dona-${id}@exemplo.com`, password: "senha-forte-1" },
+    data: { name: ownerName, email: `dona-${id}@exemplo.com`, password: "senha-forte-1", termsVersion: TERMS_VERSION },
     headers: { "content-type": "application/json", origin: baseURL },
   });
   expect(signUp.ok(), await signUp.text()).toBe(true);
@@ -155,6 +156,7 @@ export const openOwnRestaurant = async (page: Page) => {
   const email = `dona-${id}@exemplo.com`;
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await page.getByRole("button", { name: "Criar minha conta" }).click();
   await page.getByLabel("Nome do restaurante").fill("Casa Teste");
   await page.getByLabel("Endereço").fill(slug);

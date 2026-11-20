@@ -13,6 +13,7 @@ test("o dono cria a conta, sai e entra de novo", async ({ page }) => {
   await page.getByLabel("Seu nome").fill("Diego");
   await page.getByLabel("E-mail").fill(address);
   await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await page.getByRole("button", { name: "Criar minha conta" }).click();
 
   await expect(title(page, "Olá, Diego")).toBeVisible();
@@ -32,6 +33,29 @@ test("o dono cria a conta, sai e entra de novo", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+test("só cria a conta depois de aceitar os termos", async ({ page }) => {
+  await page.goto("/conta");
+  await page.getByRole("button", { name: "Criar conta" }).click();
+  await page.getByLabel("Seu nome").fill("Rita");
+  await page.getByLabel("E-mail").fill(email());
+  await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("button", { name: "Criar minha conta" }).click();
+  // O navegador barra o envio: a caixa é obrigatória.
+  await expect(title(page, "Criar sua conta")).toBeVisible();
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
+  await page.getByRole("button", { name: "Criar minha conta" }).click();
+  await expect(title(page, "Olá, Rita")).toBeVisible();
+});
+
+test("a conta não é criada pela API sem o aceite dos termos", async ({ request, baseURL }) => {
+  const response = await request.post("/api/auth/sign-up/email", {
+    data: { name: "Sem aceite", email: email(), password: "senha-forte-1" },
+    headers: { "content-type": "application/json", origin: baseURL ?? "" },
+  });
+  expect(response.status()).toBe(400);
+  expect((await response.json()).code).toBe("TERMS_NOT_ACCEPTED");
+});
+
 test("senha errada e e-mail repetido mostram o motivo", async ({ page, browser }) => {
   const address = email();
   await page.goto("/conta");
@@ -39,6 +63,7 @@ test("senha errada e e-mail repetido mostram o motivo", async ({ page, browser }
   await page.getByLabel("Seu nome").fill("Ana");
   await page.getByLabel("E-mail").fill(address);
   await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await page.getByRole("button", { name: "Criar minha conta" }).click();
   await expect(title(page, "Olá, Ana")).toBeVisible();
 
@@ -53,6 +78,7 @@ test("senha errada e e-mail repetido mostram o motivo", async ({ page, browser }
   await other.getByLabel("Seu nome").fill("Outra Ana");
   await other.getByLabel("E-mail").fill(address);
   await other.getByLabel("Senha").fill("senha-forte-2");
+  await other.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await other.getByRole("button", { name: "Criar minha conta" }).click();
   await expect(other.getByText(/Já existe uma conta com este e-mail/)).toBeVisible();
 });

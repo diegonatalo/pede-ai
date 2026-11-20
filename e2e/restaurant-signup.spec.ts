@@ -17,6 +17,7 @@ test("o dono cadastra o restaurante, entra como gerente pela conta e a equipe us
   await page.getByLabel("Seu nome").fill("Diego");
   await page.getByLabel("E-mail").fill(`dono-${id}@exemplo.com`);
   await page.getByLabel("Senha").fill("senha-forte-1");
+  await page.getByRole("checkbox", { name: /Li e aceito/ }).check();
   await page.getByRole("button", { name: "Criar minha conta" }).click();
   await expect(title(page, "Olá, Diego")).toBeVisible();
 
