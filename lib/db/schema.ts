@@ -51,7 +51,8 @@ export const diningTables = pgTable("dining_tables", {
     .notNull()
     .references(() => restaurants.id),
   label: text("label").notNull(),
-  seats: integer("seats").notNull(),
+  /** Mesa fora do salão: não aparece nas telas, mas fica para as sessões antigas. */
+  archived: boolean("archived").notNull().default(false),
   position: integer("position").notNull(),
 });
 

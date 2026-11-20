@@ -1,6 +1,7 @@
 import { roleOf, staffIdOf } from "@/lib/actor";
 import { isStaffRole } from "@/lib/api/identity";
 import { validateShares } from "@/lib/billing";
+import { activeTables, applyFloorChange } from "@/lib/floor-editor";
 import { applyMenuChange } from "@/lib/menu-editor";
 import { defaultStaffPinKey, generateStaffPin, isStaffPin, type StaffPinKey } from "@/lib/staff-pin";
 import {
@@ -147,7 +148,7 @@ export const createStore = (
       return ok(restaurant);
     },
 
-    listTables: () => repo.listTables(),
+    listTables: async () => activeTables(await repo.listTables()),
     listMapSpots: () => repo.listMapSpots(),
     getMenu: () => repo.getMenu(),
 
@@ -161,6 +162,22 @@ export const createStore = (
       return ok(updated);
     },
 
+    async editFloor(change, actor) {
+      if (roleOf(actor) !== "manager") return fail("forbidden");
+      const [restaurant, tables, mapSpots, open] = await Promise.all([
+        repo.getRestaurant(),
+        repo.listTables(),
+        repo.listMapSpots(),
+        repo.listSessions({}),
+      ]);
+      const openTableIds = new Set(open.map((record) => record.session.tableId));
+      const applied = applyFloorChange({ tables, mapSpots }, change, { restaurantId: restaurant.id, newId, openTableIds });
+      if (!applied.ok) return applied;
+      const { floor, entityId } = applied.value;
+      await repo.saveFloor(floor, event("floor_updated", actor, entityId));
+      return ok({ tables: activeTables(floor.tables), mapSpots: floor.mapSpots });
+    },
+
     async editMenu(change, actor) {
       if (roleOf(actor) !== "manager") return fail("forbidden");
       const restaurant = await repo.getRestaurant();
@@ -172,7 +189,7 @@ export const createStore = (
 
     async openSession(tableId, joinCode, actor) {
       if (!can(actor, STAFF)) return fail("forbidden");
-      if (!(await repo.listTables()).some((table) => table.id === tableId)) return fail("not_found");
+      if (!activeTables(await repo.listTables()).some((table) => table.id === tableId)) return fail("not_found");
       if (!isJoinCode(joinCode)) return fail("invalid_input");
       const restaurant = await repo.getRestaurant();
       const session: TableSession = {

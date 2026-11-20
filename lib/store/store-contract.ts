@@ -98,6 +98,42 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
       expect((await store.getEvents(0)).events.filter((event) => event.type === "menu_updated")).toHaveLength(6);
     });
 
+    it("deixa só o gerente editar mesas e mapa, guardando a mesa arquivada para o histórico", async () => {
+      const { store } = setup();
+      expect(errorOf(await store.editFloor({ type: "save_table", label: "Varanda" }, "waiter"))).toBe("forbidden");
+      const created = unwrap(await store.editFloor({ type: "save_table", label: "Varanda" }, "manager"));
+      const varanda = created.tables.at(-1);
+      expect(varanda?.label).toBe("Varanda");
+      unwrap(await store.editFloor({ type: "move_table", id: varanda?.id as string, direction: "up" }, "manager"));
+      unwrap(await store.editFloor({ type: "save_table", id: "mesa-2", label: "Mesa 20" }, "manager"));
+      expect((await store.listTables()).map((table) => table.label).slice(-3)).toEqual(["Mesa 7", "Varanda", "Mesa 8"]);
+      expect((await store.listMapSpots()).find((spot) => spot.tableId === "mesa-2")?.label).toBe("20");
+
+      // Mesa aberta não sai do salão; fechada, sai, mas a sessão antiga continua no histórico.
+      const session = unwrap(await store.openSession("mesa-3", "1234", "waiter"));
+      expect(errorOf(await store.editFloor({ type: "archive_table", id: "mesa-3" }, "manager"))).toBe("table_in_use");
+      unwrap(await store.closeSession(session.id, "waiter"));
+      unwrap(await store.editFloor({ type: "archive_table", id: "mesa-3" }, "manager"));
+      expect((await store.listTables()).some((table) => table.id === "mesa-3")).toBe(false);
+      expect((await store.listMapSpots()).some((spot) => spot.tableId === "mesa-3")).toBe(false);
+      expect(errorOf(await store.openSession("mesa-3", "1234", "waiter"))).toBe("not_found");
+      const history = unwrap(await store.listSessionsSince("2000-01-01T00:00:00.000Z", "manager"));
+      expect(history.find((entry) => entry.session.id === session.id)?.table.label).toBe("Mesa 3");
+
+      // O mapa é trocado de uma vez; sem pontos, o mapa some.
+      const map = unwrap(
+        await store.editFloor(
+          { type: "save_map", spots: [{ kind: "table", tableId: "mesa-1", x: 0, y: 0, w: 10, h: 10 }, { kind: "cashier", x: 0, y: 90, w: 20, h: 10 }] },
+          "manager",
+        ),
+      );
+      expect(map.mapSpots.map((spot) => [spot.kind, spot.label])).toEqual([["table", "1"], ["cashier", "Caixa"]]);
+      expect((await store.listMapSpots()).map((spot) => spot.label)).toEqual(["1", "Caixa"]);
+      unwrap(await store.editFloor({ type: "save_map", spots: [] }, "manager"));
+      expect(await store.listMapSpots()).toEqual([]);
+      expect((await store.getEvents(0)).events.filter((event) => event.type === "floor_updated")).toHaveLength(6);
+    });
+
     it("deixa só o gerente mudar taxa e couvert, dentro dos limites", async () => {
       const { store } = setup();
       expect(errorOf(await store.updateRestaurant({ serviceFeePercent: 12 }, "waiter"))).toBe("forbidden");

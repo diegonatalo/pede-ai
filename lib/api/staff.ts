@@ -10,6 +10,7 @@ import {
   type StaffRole,
 } from "@/lib/api/identity";
 import { error, fromResult, success, type ApiResult } from "@/lib/api/result";
+import { parseFloorChange } from "@/lib/floor-editor";
 import { generateJoinCode } from "@/lib/join-code";
 import { parseMenuChange } from "@/lib/menu-editor";
 import { computeDayReport } from "@/lib/metrics";
@@ -67,8 +68,9 @@ export const resolveStaffActor = (
 
 /** Tudo que as telas da equipe precisam: mesas, sessões abertas, cardápio e configuração. */
 export const getStaffOverview = async (store: Store, actor: StaffActor): Promise<ApiResult> => {
-  const [tables, sessions, menu, restaurant, { lastSeq }] = await Promise.all([
+  const [tables, mapSpots, sessions, menu, restaurant, { lastSeq }] = await Promise.all([
     store.listTables(),
+    store.listMapSpots(),
     store.listOpenSessions(),
     store.getMenu(),
     store.getRestaurant(),
@@ -84,7 +86,7 @@ export const getStaffOverview = async (store: Store, actor: StaffActor): Promise
   }
   // Quem está na tela, para o cabeçalho ("Garçom · Bruno").
   const me = typeof actor === "string" ? null : { name: actor.name, role: actor.role, staffId: actor.staffId };
-  return success({ tables, sessions, menu, restaurant, joinCodes, lastSeq, me });
+  return success({ tables, mapSpots, sessions, menu, restaurant, joinCodes, lastSeq, me });
 };
 
 export const openTable = async (store: Store, actor: StaffActor, body: unknown): Promise<ApiResult> => {
@@ -198,6 +200,13 @@ export const editMenu = async (store: Store, actor: StaffActor, body: unknown): 
   const change = parseMenuChange(body);
   if (!change) return error("invalid_input");
   return fromResult(await store.editMenu(change, actor));
+};
+
+/** Gerente edita as mesas e o mapa: uma mudança por requisição (ver `FloorChange`). */
+export const editFloor = async (store: Store, actor: StaffActor, body: unknown): Promise<ApiResult> => {
+  const change = parseFloorChange(body);
+  if (!change) return error("invalid_input");
+  return fromResult(await store.editFloor(change, actor));
 };
 
 export const getStaffFeed = async (store: Store, after: number): Promise<ApiResult> => {

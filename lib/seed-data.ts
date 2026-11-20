@@ -16,14 +16,14 @@ export const RESTAURANT: Restaurant = {
 const r = RESTAURANT.id;
 
 export const TABLES: Table[] = [
-  { id: "mesa-1", restaurantId: r, label: "Mesa 1", seats: 2 },
-  { id: "mesa-2", restaurantId: r, label: "Mesa 2", seats: 2 },
-  { id: "mesa-3", restaurantId: r, label: "Mesa 3", seats: 4 },
-  { id: "mesa-4", restaurantId: r, label: "Mesa 4", seats: 4 },
-  { id: "mesa-5", restaurantId: r, label: "Mesa 5", seats: 4 },
-  { id: "mesa-6", restaurantId: r, label: "Mesa 6", seats: 6 },
-  { id: "mesa-7", restaurantId: r, label: "Mesa 7", seats: 6 },
-  { id: "mesa-8", restaurantId: r, label: "Mesa 8", seats: 8 },
+  { id: "mesa-1", restaurantId: r, label: "Mesa 1", archived: false },
+  { id: "mesa-2", restaurantId: r, label: "Mesa 2", archived: false },
+  { id: "mesa-3", restaurantId: r, label: "Mesa 3", archived: false },
+  { id: "mesa-4", restaurantId: r, label: "Mesa 4", archived: false },
+  { id: "mesa-5", restaurantId: r, label: "Mesa 5", archived: false },
+  { id: "mesa-6", restaurantId: r, label: "Mesa 6", archived: false },
+  { id: "mesa-7", restaurantId: r, label: "Mesa 7", archived: false },
+  { id: "mesa-8", restaurantId: r, label: "Mesa 8", archived: false },
 ];
 
 /** Planta numa grade de 100 × 100: cozinha e bar ao fundo, entrada embaixo. */
