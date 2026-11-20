@@ -139,6 +139,8 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
       expect(errorOf(await store.updateRestaurant({ serviceFeePercent: 12 }, "waiter"))).toBe("forbidden");
       expect(errorOf(await store.updateRestaurant({ serviceFeePercent: 12.5 }, "manager"))).toBe("invalid_input");
       expect(errorOf(await store.updateRestaurant({ couvertCents: -1 }, "manager"))).toBe("invalid_input");
+      expect(errorOf(await store.updateRestaurant({ name: " x " }, "manager"))).toBe("invalid_input");
+      expect(unwrap(await store.updateRestaurant({ name: "  Cantina   Nova " }, "manager")).name).toBe("Cantina Nova");
       const updated = unwrap(await store.updateRestaurant({ couvertCents: 1500 }, "manager"));
       expect(updated).toMatchObject({ serviceFeePercent: 10, couvertCents: 1500 });
     });

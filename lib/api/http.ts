@@ -78,21 +78,14 @@ type Options = { json?: boolean };
 /** Restaurante da requisição e a camada de dados dele. */
 export type RequestRestaurant = { id: string; store: Store };
 
-// Endereço → id. O endereço de um restaurante não muda, então fica guardado no processo.
-const slugs = globalThis as typeof globalThis & { __pedeAiSlugs?: Map<string, string> };
-
 /** Restaurante pedido em `?r=<slug>`. `null` sem o parâmetro ou se ele não existe. */
 export const resolveRestaurant = async (request: NextRequest): Promise<RequestRestaurant | null> => {
   const slug = request.nextUrl.searchParams.get("r");
   if (!slug) return null;
-  slugs.__pedeAiSlugs ??= new Map();
-  let id = slugs.__pedeAiSlugs.get(slug);
-  if (!id) {
-    const found = await getRegistry().findBySlug(slug);
-    if (!found) return null;
-    id = found.id;
-    slugs.__pedeAiSlugs.set(slug, id);
-  }
+  // Sem cache: um restaurante apagado precisa sumir em todas as instâncias na hora.
+  const found = await getRegistry().findBySlug(slug);
+  if (!found) return null;
+  const { id } = found;
   return { id, store: getStore(id) };
 };
 

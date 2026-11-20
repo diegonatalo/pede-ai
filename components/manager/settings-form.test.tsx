@@ -29,7 +29,7 @@ describe("SettingsForm", () => {
     expect(url).toBe("/api/staff/restaurant?role=manager");
     expect(init).toMatchObject({ method: "PATCH" });
     expect(init?.body).toBe(
-      JSON.stringify({ serviceFeePercent: 12, couvertCents: 1500, requireFirstOrderApproval: false }),
+      JSON.stringify({ name: "Cantina Pede Aí", serviceFeePercent: 12, couvertCents: 1500, requireFirstOrderApproval: false }),
     );
     expect(await screen.findByRole("status")).toHaveTextContent("Ajustes salvos.");
     expect(onSaved).toHaveBeenCalledOnce();

@@ -131,6 +131,8 @@ export const createStore = (
     async updateRestaurant(settings, actor) {
       if (roleOf(actor) !== "manager") return fail("forbidden");
       const { serviceFeePercent, couvertCents, requireFirstOrderApproval } = settings;
+      const name = settings.name === undefined ? undefined : cleanText(settings.name, LIMITS.restaurantName);
+      if (settings.name !== undefined && (!name || name.length < 2)) return fail("invalid_input");
       if (serviceFeePercent !== undefined && !isIntInRange(serviceFeePercent, 0, LIMITS.serviceFeePercent))
         return fail("invalid_input");
       if (couvertCents !== undefined && !isIntInRange(couvertCents, 0, LIMITS.couvertCents))
@@ -140,6 +142,7 @@ export const createStore = (
       const current = await repo.getRestaurant();
       const restaurant = {
         ...current,
+        ...(name && { name }),
         ...(serviceFeePercent !== undefined && { serviceFeePercent }),
         ...(couvertCents !== undefined && { couvertCents }),
         ...(requireFirstOrderApproval !== undefined && { requireFirstOrderApproval }),

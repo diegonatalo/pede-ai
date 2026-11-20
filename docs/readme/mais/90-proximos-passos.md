@@ -13,6 +13,7 @@
 - [x] Fase 2, etapa 2: vários restaurantes isolados, endereço `/r/<slug>`, cadastro do restaurante pela conta.
 - [x] Fase 2, etapa 3: cardápio editável pelo gerente.
 - [x] Fase 2: mesas e mapa do salão editáveis pelo gerente.
+- [x] Nome do restaurante editável; excluir restaurante e conta.
 - [x] Página inicial de apresentação.
 - [x] Sem demonstração pública: usar e testar é pelo fluxo real (conta, restaurante, equipe).
 - [x] Nova identidade visual, com o espaço das fotos do cardápio pronto.

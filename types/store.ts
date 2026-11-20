@@ -100,7 +100,7 @@ export type SessionSnapshot = {
 export type OrderLineInput = { menuItemId: string; quantity: number; note?: string };
 
 export type RestaurantSettings = Partial<
-  Pick<Restaurant, "serviceFeePercent" | "couvertCents" | "requireFirstOrderApproval">
+  Pick<Restaurant, "name" | "serviceFeePercent" | "couvertCents" | "requireFirstOrderApproval">
 >;
 
 /**
@@ -260,4 +260,6 @@ export type RestaurantRegistry = {
   listByOwner(ownerUserId: string): Promise<RestaurantRecord[]>;
   /** Grava o restaurante com salão, cardápio e equipe. `false` se o endereço já é de outro. */
   create(data: RestaurantData): Promise<boolean>;
+  /** Apaga o restaurante e tudo dele (salão, cardápio, equipe, mesas, pedidos, eventos). Não tem volta. */
+  remove(restaurantId: string): Promise<void>;
 };

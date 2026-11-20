@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   createOwnRestaurant,
+  deleteOwnedRestaurants,
+  deleteOwnRestaurant,
   enterAsOwner,
   listOwnRestaurants,
   type AccountDeps,
@@ -109,5 +111,36 @@ describe("dono entra como gerente", () => {
     const store = storeFor(restaurantId);
     const owner = { role: "manager" as const, staffId: `${restaurantId}-owner`, name: "Ana" };
     expect(errorOf(await setTeamActive(store, owner, `${restaurantId}-owner`, { active: false }))).toBe("forbidden");
+  });
+});
+
+describe("excluir restaurante", () => {
+  it("só o dono apaga, e só com o endereço digitado de novo", async () => {
+    const { deps, registry } = setup();
+    await createOwnRestaurant(deps, ANA, { name: "Cantina", slug: "cantina" });
+    expect(errorOf(await deleteOwnRestaurant(registry, RUI, { slug: "cantina", confirm: "cantina" }))).toBe(
+      "restaurant_not_found",
+    );
+    expect(errorOf(await deleteOwnRestaurant(registry, ANA, { slug: "cantina", confirm: "Cantina" }))).toBe("invalid_input");
+    expect(errorOf(await deleteOwnRestaurant(registry, ANA, { slug: "cantina" }))).toBe("invalid_input");
+    expect(await registry.findBySlug("cantina")).not.toBeNull();
+
+    expect((await deleteOwnRestaurant(registry, ANA, { slug: "cantina", confirm: "cantina" })).body).toEqual({
+      deleted: "cantina",
+    });
+    expect(await registry.findBySlug("cantina")).toBeNull();
+    expect(errorOf(await deleteOwnRestaurant(registry, ANA, { slug: "cantina", confirm: "cantina" }))).toBe(
+      "restaurant_not_found",
+    );
+  });
+
+  it("ao apagar a conta, vão todos os restaurantes dela e só os dela", async () => {
+    const { deps, registry } = setup();
+    await createOwnRestaurant(deps, ANA, { name: "Um", slug: "um-da-ana" });
+    await createOwnRestaurant(deps, ANA, { name: "Dois", slug: "dois-da-ana" });
+    await createOwnRestaurant(deps, RUI, { name: "Do Rui", slug: "do-rui" });
+    await deleteOwnedRestaurants(registry, ANA.id);
+    expect(await registry.listByOwner(ANA.id)).toEqual([]);
+    expect((await registry.listByOwner(RUI.id)).map((record) => record.slug)).toEqual(["do-rui"]);
   });
 });

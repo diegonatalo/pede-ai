@@ -9,9 +9,10 @@ import type { Restaurant } from "@/types/domain";
 
 type Props = { restaurant: Restaurant; onSaved: () => Promise<void> };
 
-/** Taxa de serviço, couvert e a confirmação do primeiro pedido. */
+/** Nome do restaurante, taxa de serviço, couvert e a confirmação do primeiro pedido. */
 export const SettingsForm = ({ restaurant, onSaved }: Props) => {
   const apiRequest = useApi();
+  const [name, setName] = useState(restaurant.name);
   const [fee, setFee] = useState(String(restaurant.serviceFeePercent));
   const [couvert, setCouvert] = useState(formatCents(restaurant.couvertCents).replace(/R\$\s?/, ""));
   const [approval, setApproval] = useState(restaurant.requireFirstOrderApproval);
@@ -20,6 +21,10 @@ export const SettingsForm = ({ restaurant, onSaved }: Props) => {
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (name.trim().length < 2) {
+      setMessage({ ok: false, text: "O nome do restaurante precisa de pelo menos 2 letras." });
+      return;
+    }
     const serviceFeePercent = Number(fee);
     const couvertCents = parseCents(couvert);
     if (!Number.isInteger(serviceFeePercent) || serviceFeePercent < 0 || serviceFeePercent > LIMITS.serviceFeePercent) {
@@ -34,7 +39,7 @@ export const SettingsForm = ({ restaurant, onSaved }: Props) => {
     setMessage(null);
     const response = await apiRequest("/api/staff/restaurant?role=manager", {
       method: "PATCH",
-      body: { serviceFeePercent, couvertCents, requireFirstOrderApproval: approval },
+      body: { name: name.trim(), serviceFeePercent, couvertCents, requireFirstOrderApproval: approval },
     });
     setSaving(false);
     setMessage(response.ok ? { ok: true, text: "Ajustes salvos." } : { ok: false, text: response.message });
@@ -43,6 +48,22 @@ export const SettingsForm = ({ restaurant, onSaved }: Props) => {
 
   return (
     <form onSubmit={submit} className={`${CARD} flex max-w-lg flex-col gap-5 p-6`}>
+      <div className="flex flex-col gap-2">
+        <label className="flex flex-col gap-2">
+          <span className={LABEL}>Nome do restaurante</span>
+          <input
+            className={INPUT}
+            required
+            maxLength={LIMITS.restaurantName}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            aria-describedby="ajuda-nome"
+          />
+        </label>
+        <p id="ajuda-nome" className="text-sm text-muted">
+          Aparece no topo das telas e no celular do cliente. O endereço (/r/…) continua o mesmo.
+        </p>
+      </div>
       {/* A ajuda fica fora do label: entra como descrição, não como parte do nome do campo. */}
       <div className="flex flex-col gap-2">
         <label className="flex flex-col gap-2">

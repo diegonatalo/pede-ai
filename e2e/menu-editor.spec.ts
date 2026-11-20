@@ -7,7 +7,7 @@ type PublicMenu = {
 
 test("o gerente monta o cardápio e o cliente vê na hora", async ({ page }) => {
   // Restaurante criado pela tela, como um dono faria.
-  const slug = await openOwnRestaurant(page);
+  const { slug } = await openOwnRestaurant(page);
   const errors = collectErrors(page);
   const publicMenu = async (): Promise<PublicMenu> => (await page.request.get(`/api/menu?r=${slug}`)).json();
 

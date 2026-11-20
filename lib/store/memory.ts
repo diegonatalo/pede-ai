@@ -266,6 +266,9 @@ export const createMemoryRegistry = (world: MemoryWorld): RestaurantRegistry => 
       world.restaurants.set(data.restaurant.id, stateFrom(data, world.pinKey));
       return true;
     },
+    async remove(restaurantId) {
+      world.restaurants.delete(restaurantId);
+    },
   };
 };
 
