@@ -4,7 +4,7 @@ import { useState } from "react";
 import { MapEditor } from "@/components/manager/map-editor";
 import { MenuEditor } from "@/components/manager/menu-editor";
 import { QrSheet } from "@/components/manager/qr-sheet";
-import { ReportPanel } from "@/components/manager/report-panel";
+import { ReportSection } from "@/components/manager/report-section";
 import { SettingsForm } from "@/components/manager/settings-form";
 import { TablesEditor } from "@/components/manager/tables-editor";
 import { TeamPanel } from "@/components/manager/team-panel";
@@ -13,7 +13,6 @@ import { StaffLogin } from "@/components/staff/staff-login";
 import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { TablesPanel } from "@/components/waiter/tables-panel";
-import { useManagerReport } from "@/hooks/use-manager-report";
 import { useStaffCommand } from "@/hooks/use-staff-command";
 import { useStaffOverview } from "@/hooks/use-staff-overview";
 import { tableBoard } from "@/lib/selectors";
@@ -35,8 +34,6 @@ export const ManagerApp = () => {
   const { state, refresh } = useStaffOverview("manager");
   const [section, setSection] = useState<Section>("floor");
   const { busy, message, run } = useStaffCommand("manager", refresh);
-  const ready = state.status === "ready";
-  const { report, message: reportMessage } = useManagerReport(ready, ready ? state.data.lastSeq : 0);
 
   if (state.status === "loading") {
     return (
@@ -102,14 +99,7 @@ export const ManagerApp = () => {
             <TablesPanel board={board} busy={busy} run={(key, path, body) => void run(key, path, body)} />
           </div>
         )}
-        {section === "report" &&
-          (report ? (
-            <ReportPanel report={report} />
-          ) : (
-            <p className="text-muted" role="status">
-              {reportMessage || "Carregando os números…"}
-            </p>
-          ))}
+        {section === "report" && <ReportSection lastSeq={data.lastSeq} />}
         {section === "menu" && <MenuEditor menu={data.menu} busy={busy} run={run} />}
         {section === "team" && <TeamPanel meId={data.me?.staffId} />}
         {section === "settings" && (

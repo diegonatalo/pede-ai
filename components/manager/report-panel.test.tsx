@@ -23,13 +23,15 @@ const report: DayReport = {
 const valueOf = (label: string) => screen.getByText(label).nextElementSibling?.textContent?.replace(/\s/g, " ");
 
 describe("ReportPanel", () => {
-  it("mostra os números do dia formatados", () => {
-    render(<ReportPanel report={report} />);
+  it("mostra os números do período formatados", () => {
+    render(<ReportPanel report={report} periodLabel="Últimos 7 dias" />);
+    expect(screen.getByRole("heading", { name: "Últimos 7 dias" })).toBeInTheDocument();
     expect(valueOf("Faturamento")).toBe("R$ 113,30");
     expect(valueOf("Média por pessoa")).toBe("R$ 37,77");
     expect(valueOf("Tempo de preparo")).toBe("12,5 min");
     expect(valueOf("Tempo até a mesa")).toBe("—");
-    expect(screen.getByText("4 já fechadas hoje")).toBeInTheDocument();
+    expect(valueOf("Mesas atendidas")).toBe("5");
+    expect(screen.getByText("1 ainda abertas")).toBeInTheDocument();
   });
 
   it("lista os mais pedidos em ordem", () => {
@@ -40,6 +42,6 @@ describe("ReportPanel", () => {
 
   it("avisa quando ainda não vendeu nada", () => {
     render(<ReportPanel report={{ ...report, topItems: [] }} />);
-    expect(screen.getByText("Nenhum item vendido hoje ainda.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum item vendido neste período.")).toBeInTheDocument();
   });
 });

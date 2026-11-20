@@ -2,25 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useApi } from "@/hooks/use-restaurant";
-import { startOfLocalDay, type DayReport } from "@/lib/metrics";
+import type { DayReport } from "@/lib/metrics";
+import type { PeriodRange } from "@/lib/periods";
+import type { ItemRow, TabRow } from "@/lib/report-rows";
+
+export type ReportData = { report: DayReport; rows: { items: ItemRow[]; tabs: TabRow[] } };
 
 /**
- * Números do dia para o gerente. Relê sempre que `lastSeq` muda (o polling da tela já avisa).
- * O início do dia é calculado no navegador, no fuso de quem está olhando.
+ * Números do período para o gerente. Relê quando o período muda e quando `lastSeq` muda
+ * (o polling da tela já avisa de pedidos novos). Sem período, não busca.
  */
-export const useManagerReport = (enabled: boolean, lastSeq: number) => {
+export const useManagerReport = (range: PeriodRange | null, lastSeq: number) => {
   const apiRequest = useApi();
-  const [report, setReport] = useState<DayReport | null>(null);
+  const [data, setData] = useState<{ key: string; value: ReportData } | null>(null);
   const [message, setMessage] = useState("");
+  const key = range ? `${range.since}|${range.until}` : "";
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!range) return;
     let active = true;
-    const since = encodeURIComponent(startOfLocalDay(new Date()));
-    void apiRequest<{ report: DayReport }>(`/api/staff/report?role=manager&since=${since}`).then((response) => {
+    const query = `since=${encodeURIComponent(range.since)}&until=${encodeURIComponent(range.until)}`;
+    void apiRequest<ReportData>(`/api/staff/report?role=manager&${query}`).then((response) => {
       if (!active) return;
       if (response.ok) {
-        setReport(response.data.report);
+        setData({ key: `${range.since}|${range.until}`, value: response.data });
         setMessage("");
       } else {
         setMessage(response.message);
@@ -29,7 +34,8 @@ export const useManagerReport = (enabled: boolean, lastSeq: number) => {
     return () => {
       active = false;
     };
-  }, [apiRequest, enabled, lastSeq]);
+  }, [apiRequest, range, lastSeq]);
 
-  return { report, message };
+  // Enquanto o período novo carrega, não mostra os números do período anterior.
+  return { data: data && data.key === key ? data.value : null, message };
 };
