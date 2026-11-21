@@ -1,4 +1,4 @@
-import { collectErrors, expect, openOwnRestaurant, staffLogin, test, title } from "./fixtures";
+import { collectErrors, expect, openOwnRestaurant, staffLogin, test } from "./fixtures";
 
 test("o gerente muda o nome do restaurante", async ({ page, restaurant }) => {
   await staffLogin(page.request, restaurant, "manager");
@@ -41,7 +41,7 @@ test("o dono exclui a conta com a senha, e os restaurantes vão junto", async ({
 
   await form.getByLabel("Sua senha").fill(password);
   await form.getByRole("button", { name: "Excluir conta para sempre" }).click();
-  await expect(title(page, "Entrar na sua conta")).toBeVisible();
+  await expect(page).toHaveURL("/entrar");
   expect((await page.request.get(`/api/menu?r=${slug}`)).status()).toBe(404);
 
   // A conta não existe mais.

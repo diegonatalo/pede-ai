@@ -12,7 +12,7 @@ test("o dono cadastra o restaurante, entra como gerente pela conta e a equipe us
   const slug = `cantina-${id}`;
   const errors = collectErrors(page);
 
-  await page.goto("/conta");
+  await page.goto("/entrar");
   await page.getByRole("button", { name: "Criar conta" }).click();
   await page.getByLabel("Seu nome").fill("Diego");
   await page.getByLabel("E-mail").fill(`dono-${id}@exemplo.com`);

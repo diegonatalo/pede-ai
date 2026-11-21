@@ -16,7 +16,7 @@ test("a página inicial apresenta o produto e leva ao cadastro", async ({ page }
   await expect(page.getByRole("heading", { level: 2, name: "Do QR code à conta paga, todo mundo na mesma página" })).toBeInViewport();
 
   await page.getByRole("link", { name: "Criar conta grátis" }).first().click();
-  await expect(page).toHaveURL("/conta");
+  await expect(page).toHaveURL("/entrar");
   await expect(page.getByRole("heading", { level: 1, name: "Entrar na sua conta" })).toBeVisible();
   await expect(page.getByRole("link", { name: /demonstração/i })).toHaveCount(0);
   expect(errors).toEqual([]);
