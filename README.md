@@ -97,17 +97,17 @@ pnpm dev        # http://localhost:3000
 | `pnpm test:watch` | Reexecuta os testes ao salvar |
 | `pnpm test:e2e` | Roda os testes de ponta a ponta (Playwright) |
 | `pnpm db:generate` | Gera uma migração nova a partir de `lib/db/schema.ts` |
-| `pnpm db:migrate` | Aplica as migrações no banco do `.env.local` (conexão direta) |
+| `pnpm db:migrate` | Aplica as migrações no banco do `.env.local` (a branch `dev` do Neon) |
 
 ### 🔑 Variáveis de ambiente
 
-Todas são opcionais no computador: sem banco, os dados ficam na memória do servidor.
+Todas são opcionais no computador: sem banco, os dados ficam na memória do servidor. Copie o `.env.example` para `.env.local`; a `DATABASE_URL` dele é a de uma branch `dev` do Neon, nunca a de produção.
 
 | Variável | Descrição | Se não definir |
 |---|---|---|
 | `DATABASE_URL` | Postgres (Neon) com pooling, usado pelo app. Criada pela integração Neon da Vercel. | Dados na memória |
 | `DATABASE_URL_UNPOOLED` | Conexão direta, usada pelas migrações (`pnpm db:migrate`). | Usa a `DATABASE_URL` |
-| `PEDE_AI_STORE` | `postgres` para usar o banco no computador. Fora da Vercel, o padrão é a memória, para o `pnpm dev` e o E2E não gravarem no banco de produção. | Memória |
+| `PEDE_AI_STORE` | `postgres` para o `pnpm dev` usar o banco do `.env.local`. Fora da Vercel, o padrão é a memória (o E2E também roda nela). | Memória |
 | `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
 | `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe e, sem `BETTER_AUTH_SECRET`, também as sessões das contas. **Obrigatória na Vercel**: lá há várias instâncias, e cada uma geraria a própria chave. | Gera uma chave aleatória a cada início do servidor |
 | `CRON_SECRET` | Senha da rotina diária de privacidade (`/api/cron/privacy`). Vai na Vercel e, com o mesmo valor, nos segredos do repositório no GitHub: o workflow `privacy-cleanup.yml` chama a rota todo dia às 6h de Brasília. | A limpeza não roda |
@@ -147,10 +147,12 @@ app/              Rotas (página inicial, 404, erros, robots, sitemap, imagem OG
 app/api/          Route Handlers finos sobre os serviços de lib/api
 components/       Corpo das telas (account/ para a conta do dono, customer/ para o celular do cliente, waiter/, kitchen/, manager/ e staff/ para a equipe, ui/ para estilos comuns)
 docs/             Textos e imagens do README (readme-kit)
+drizzle/          Migrações do banco, geradas por pnpm db:generate e aplicadas no deploy
 e2e/              Testes de ponta a ponta (Playwright)
 hooks/            Estado e efeitos de React (polling do feed, visão do cliente e da equipe, tela acesa, aviso sonoro)
-lib/              Lógica pura (dinheiro, estados, conta), login das contas (lib/auth, Better Auth), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e migrações) e o restaurante de exemplo (modelo dos restaurantes novos e base dos testes)
+lib/              Lógica pura (dinheiro, estados, conta), login das contas (lib/auth, Better Auth), serviços da API (lib/api), camada de dados (lib/store: regras + memória ou Postgres), banco (lib/db: schema e conexão, só no servidor) e o restaurante de exemplo (modelo dos restaurantes novos e base dos testes)
 types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
+proxy.ts          Checagem otimista do cookie da conta: sem ele, /conta vai para /entrar
 ```
 
 <br />
@@ -171,7 +173,7 @@ types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 | **Cardápio** | O gerente cria, edita, ordena e exclui categorias e itens (nome, descrição, preço, cozinha ou bar) na seção Cardápio, e o cliente vê na hora. Categoria só é excluída vazia, e excluir pede confirmação. Cada pedido guarda o nome e o preço do momento, então mudar o cardápio não muda contas abertas. Limite de 30 categorias e 300 itens por restaurante. |
 | **Salão** | Em Ajustes, o gerente cria, renomeia, ordena e tira mesas do salão, e desenha o mapa (opcional) numa grade: mesas, cozinha, bar, banheiros, caixa e entrada, movidos e redimensionados por botões e salvos de uma vez. Mesa aberta não sai do salão; a que sai some das telas e do QR, mas fica guardada para o histórico de vendas. A quantidade de lugares não é guardada, porque muda no dia a dia. |
 | **Números** | O gerente escolhe o período (hoje, ontem, últimos 7 dias, este mês ou datas à escolha, até um ano) e vê faturamento, comandas pagas, pessoas atendidas, média por pessoa, mesas, itens, tempos médios e os mais pedidos. Baixa duas planilhas em CSV (uma linha por item ou por comanda, com taxa, couvert e total), no jeito que o Excel em português abre direto. O período e as datas das planilhas seguem o fuso do aparelho. |
-| **Conta do dono** | O dono do restaurante cria a conta com e-mail e senha (Better Auth; senha guardada só como hash, sessões no banco). Sem serviço externo: por enquanto não há confirmação de e-mail nem redefinição por link. |
+| **Conta do dono** | O dono do restaurante cria a conta ou entra em `/entrar`, com e-mail e senha (Better Auth; senha guardada só como hash, sessões no banco). Sem o cookie da sessão, `/conta` manda direto para `/entrar` (`proxy.ts`) e volta depois de entrar. Sem serviço externo: por enquanto não há confirmação de e-mail nem redefinição por link. |
 | **Equipe** | Cada pessoa tem o próprio PIN de 6 dígitos, criado pelo gerente na seção Equipe e mostrado uma vez só. O banco guarda só uma chave derivada do PIN (HMAC com a chave do app). Cada ação registra quem fez; quem é desativado perde o acesso na hora. O gerente pode usar qualquer tela; as outras pessoas, só a do próprio papel. |
 | **Acesso** | O celular do cliente e o da equipe guardam um cookie assinado. A equipe entra com o PIN pessoal, e o cookie guarda quem entrou em cada tela. O código da mesa trava depois de 5 erros naquela mesa, e quem erra 15 vezes em 10 minutos, somando todas as mesas, espera a janela passar (contado por endereço de internet, guardado só como HMAC e apagado pela rotina diária). |
 | **Avisos no celular** | Na tela do garçom, "Ligar avisos" inscreve o aparelho (Web Push, sem serviço pago): pedido para confirmar, item pronto e chamado de cliente chegam mesmo com a tela apagada, e tocar no aviso abre a tela do garçom. O envio acontece depois da resposta (`after` do Next), com validade de 5 minutos. Quem é desativado e aparelhos que sumiram saem da lista sozinhos. No iPhone, só com o site adicionado à tela de início. |
@@ -188,9 +190,9 @@ types/            Tipos do domínio (mesa, comanda, pedido, item, chamado)
 
 Publicado na [Vercel](https://vercel.com), que faz deploy só da branch `main` (`vercel.json`). Para trocar de domínio, defina `NEXT_PUBLIC_SITE_URL` no build.
 
-Na Vercel, os dados ficam no Postgres do Neon (integração da Vercel, que cria a `DATABASE_URL`). No computador, sem `PEDE_AI_STORE=postgres`, ficam na memória do servidor e somem quando ele reinicia.
+Na Vercel, os dados ficam no Postgres do Neon (integração da Vercel, que cria a `DATABASE_URL`). No computador, sem `PEDE_AI_STORE=postgres`, ficam na memória do servidor e somem quando ele reinicia; com ela, vão para a branch `dev` do Neon do `.env.local` (nunca a de produção).
 
-Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate`, revise a migração em `lib/db/migrations/` e rode `pnpm db:migrate` **antes** de mesclar o PR, para o deploy já encontrar o banco atualizado. O app não grava dados sozinho: cada restaurante nasce pelo cadastro da conta, com o salão e o cardápio de exemplo.
+Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate` e revise a migração em `drizzle/`. O deploy da `main` aplica as migrações sozinho antes do build (script `vercel-build`: `drizzle-kit migrate && next build`). Apagar ou renomear coluna vai em dois PRs: primeiro o código para de usar a coluna, depois outro a remove. O app não grava dados sozinho: cada restaurante nasce pelo cadastro da conta, com o salão e o cardápio de exemplo.
 
 ### 🧭 Próximos passos
 
