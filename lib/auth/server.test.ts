@@ -1,7 +1,10 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createAuth } from "@/lib/auth/server";
 import { TERMS_VERSION } from "@/lib/terms";
+
+// Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
+vi.mock("server-only", () => ({}));
 
 // Sem DATABASE_URL o login usa a memória. Cada teste usa um e-mail próprio, porque a memória
 // fica no globalThis do processo (como no `pnpm dev`).

@@ -17,8 +17,8 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
-import { drizzle } from "drizzle-orm/neon-http";
 import type { PgTable } from "drizzle-orm/pg-core";
+import { createDb, type Db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
 import type { PushStore } from "@/lib/push";
@@ -64,10 +64,6 @@ const {
   pushSubscriptions,
 } = schema;
 
-export type Db = ReturnType<typeof drizzle<typeof schema>>;
-
-/** Uma conexão (HTTP) para repartir entre o cadastro e os repositórios de cada restaurante. */
-export const createPostgresDb = (url: string): Db => drizzle(url, { schema });
 type Batch = [BatchItem<"pg">, ...BatchItem<"pg">[]];
 
 // --- linhas do banco ↔ domínio (null no banco = campo ausente no domínio) ---
@@ -243,7 +239,7 @@ export const createPostgresRepository = (
   url: string,
   { restaurantId, db: shared }: { restaurantId: string; db?: Db },
 ): Repository => {
-  const db: Db = shared ?? drizzle(url, { schema });
+  const db: Db = shared ?? createDb(url);
   /** Sessões deste restaurante: toda consulta por comanda, item ou chamado passa por aqui. */
   const ownSessions = () =>
     db.select({ id: tableSessions.id }).from(tableSessions).where(eq(tableSessions.restaurantId, restaurantId));
@@ -601,7 +597,7 @@ export const createPostgresRegistry = (
   url: string,
   { pinKey = defaultStaffPinKey(), db: shared }: { pinKey?: StaffPinKey; db?: Db } = {},
 ): RestaurantRegistry => {
-  const db: Db = shared ?? drizzle(url, { schema });
+  const db: Db = shared ?? createDb(url);
   return {
     async findBySlug(slug) {
       const [row] = await db.select().from(restaurants).where(eq(restaurants.slug, slug));
@@ -674,7 +670,7 @@ export const createPostgresRateLimiter = (
   url: string,
   { db: shared, failures = JOIN_LIMIT.failures, windowMs = JOIN_LIMIT.windowMs }: { db?: Db } & Partial<RateLimitConfig> = {},
 ): RateLimiter => {
-  const db: Db = shared ?? drizzle(url, { schema });
+  const db: Db = shared ?? createDb(url);
   return {
     async isBlocked(key, nowMs) {
       const [row] = await db.select().from(rateLimits).where(eq(rateLimits.key, key));
@@ -702,7 +698,7 @@ export const createPostgresRateLimiter = (
 
 /** Inscrições de push no Postgres (vale para todas as instâncias). */
 export const createPostgresPushStore = (url: string, { db: shared }: { db?: Db } = {}): PushStore => {
-  const db: Db = shared ?? drizzle(url, { schema });
+  const db: Db = shared ?? createDb(url);
   return {
     async save(record) {
       await db

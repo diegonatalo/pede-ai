@@ -1,11 +1,14 @@
 // @vitest-environment node
 import { NextRequest } from "next/server";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { CUSTOMER_COOKIE, STAFF_COOKIE, handleCustomer, handleStaff, respond } from "@/lib/api/http";
 import type { StaffIdentity } from "@/lib/api/identity";
 import { error, success } from "@/lib/api/result";
 import { newRestaurantData, sampleRestaurantData } from "@/lib/restaurant-template";
 import { getRegistry, getStore } from "@/lib/store";
+
+// Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
+vi.mock("server-only", () => ({}));
 
 // Restaurante de exemplo, criado no mundo em memória do processo antes dos testes.
 const URL_BASE = "http://localhost/api/teste?r=demo";
