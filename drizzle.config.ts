@@ -10,7 +10,7 @@ const url = process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL;
 export default defineConfig({
   dialect: "postgresql",
   schema: "./lib/db/schema.ts",
-  out: "./lib/db/migrations",
+  out: "./drizzle",
   dbCredentials: { url: url ?? "" },
   strict: true,
 });

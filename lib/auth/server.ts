@@ -2,9 +2,9 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { drizzle } from "drizzle-orm/neon-http";
 import { deleteOwnedRestaurants } from "@/lib/api/account";
 import { authBaseURL, authSecret, missingSecretOnVercel } from "@/lib/auth/config";
+import { getDb } from "@/lib/db";
 import { authAccounts, authSessions, authUsers, authVerifications } from "@/lib/db/schema";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { getRegistry, storeKind } from "@/lib/store";
@@ -18,8 +18,7 @@ const termsNotAccepted = () =>
 /** Banco do login: o Postgres quando o app usa o Postgres; memória no resto (CI, E2E, `pnpm dev`). */
 const database = (env: Env) => {
   if (storeKind(env) === "postgres") {
-    const db = drizzle(env.DATABASE_URL as string);
-    return drizzleAdapter(db, {
+    return drizzleAdapter(getDb(), {
       provider: "pg",
       schema: { user: authUsers, session: authSessions, account: authAccounts, verification: authVerifications },
     });

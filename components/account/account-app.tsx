@@ -1,18 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
 import { DeleteAccount } from "@/components/account/delete-account";
 import { OwnRestaurants } from "@/components/account/own-restaurants";
-import { SignInForm } from "@/components/account/sign-in-form";
 import { TermsGate } from "@/components/account/terms-gate";
 import { BUTTON, CARD } from "@/components/ui/styles";
 import { useAccount } from "@/hooks/use-account";
+import { ACCOUNT_PATH, SIGN_IN_PATH, signInPath } from "@/lib/auth/paths";
 import { needsTermsAcceptance } from "@/lib/terms";
+
+/** Sai da conta com navegação completa, para o servidor esquecer a sessão junto. */
+const leave = async (signOut: () => Promise<void>) => {
+  await signOut();
+  window.location.assign(SIGN_IN_PATH);
+};
 
 /** Área do dono do restaurante: a conta e os restaurantes dela. */
 export const AccountApp = () => {
   const { state, refresh, signOut } = useAccount();
 
-  if (state.status === "loading") {
+  // Cookie que não vale mais (sessão vencida ou apagada): volta para entrar.
+  useEffect(() => {
+    if (state.status === "guest") window.location.assign(signInPath(ACCOUNT_PATH));
+  }, [state.status]);
+
+  if (state.status !== "signed-in") {
     return (
       <p className="py-20 text-center text-muted" role="status">
         Carregando…
@@ -20,15 +32,13 @@ export const AccountApp = () => {
     );
   }
 
-  if (state.status === "guest") return <SignInForm onSignedIn={() => void refresh()} />;
-
   const { account } = state;
   if (needsTermsAcceptance(account.termsVersion)) {
     return (
       <TermsGate
         updated={account.termsVersion !== null}
         onAccepted={() => void refresh()}
-        onSignOut={() => void signOut()}
+        onSignOut={() => void leave(signOut)}
       />
     );
   }
@@ -40,7 +50,7 @@ export const AccountApp = () => {
           <h1 className="mt-1 text-2xl font-bold">Olá, {account.name}</h1>
           <p className="mt-1 text-muted">{account.email}</p>
         </div>
-        <button type="button" className={BUTTON.secondary} onClick={() => void signOut()}>
+        <button type="button" className={BUTTON.secondary} onClick={() => void leave(signOut)}>
           Sair
         </button>
       </section>
@@ -54,7 +64,7 @@ export const AccountApp = () => {
         <p className="text-sm text-muted">
           Você pode excluir a conta quando quiser. Os restaurantes dela e tudo o que eles guardam são apagados junto.
         </p>
-        <DeleteAccount onDeleted={() => void refresh()} />
+        <DeleteAccount onDeleted={() => window.location.assign(SIGN_IN_PATH)} />
       </section>
     </main>
   );

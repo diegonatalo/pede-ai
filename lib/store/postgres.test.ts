@@ -1,13 +1,13 @@
 // @vitest-environment node
 import { existsSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createDb } from "@/lib/db";
 import { newRestaurantData, sampleRestaurantData } from "@/lib/restaurant-template";
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
 import { describeIsolationContract } from "@/lib/store/isolation-contract";
 import {
-  createPostgresDb,
   createPostgresPushStore,
   createPostgresRateLimiter,
   createPostgresRegistry,
@@ -16,6 +16,9 @@ import {
 import { describePushStoreContract } from "@/lib/store/push-contract";
 import { describeRateLimiterContract } from "@/lib/store/rate-limit-contract";
 import { describeStoreContract } from "@/lib/store/store-contract";
+
+// Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
+vi.mock("server-only", () => ({}));
 
 // Banco de TESTE, nunca o de produção: cada teste apaga todas as tabelas.
 // No Neon, use um banco separado (ex.: CREATE DATABASE pede_ai_test, com as migrações aplicadas)
@@ -56,7 +59,7 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
 
   // Dois restaurantes no mesmo banco, numa conexão só (como no app).
   describeIsolationContract(() => {
-    const db = createPostgresDb(url as string);
+    const db = createDb(url as string);
     return {
       registry: createPostgresRegistry(url as string, { db }),
       storeFor: (restaurantId) => createStore(createPostgresRepository(url as string, { restaurantId, db })),

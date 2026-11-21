@@ -2,6 +2,6 @@
 
 Publicado na [Vercel](https://vercel.com), que faz deploy só da branch `main` (`vercel.json`). Para trocar de domínio, defina `NEXT_PUBLIC_SITE_URL` no build.
 
-Na Vercel, os dados ficam no Postgres do Neon (integração da Vercel, que cria a `DATABASE_URL`). No computador, sem `PEDE_AI_STORE=postgres`, ficam na memória do servidor e somem quando ele reinicia.
+Na Vercel, os dados ficam no Postgres do Neon (integração da Vercel, que cria a `DATABASE_URL`). No computador, sem `PEDE_AI_STORE=postgres`, ficam na memória do servidor e somem quando ele reinicia; com ela, vão para a branch `dev` do Neon do `.env.local` (nunca a de produção).
 
-Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate`, revise a migração em `lib/db/migrations/` e rode `pnpm db:migrate` **antes** de mesclar o PR, para o deploy já encontrar o banco atualizado. O app não grava dados sozinho: cada restaurante nasce pelo cadastro da conta, com o salão e o cardápio de exemplo.
+Mudou o schema (`lib/db/schema.ts`)? Rode `pnpm db:generate` e revise a migração em `drizzle/`. O deploy da `main` aplica as migrações sozinho antes do build (script `vercel-build`: `drizzle-kit migrate && next build`). Apagar ou renomear coluna vai em dois PRs: primeiro o código para de usar a coluna, depois outro a remove. O app não grava dados sozinho: cada restaurante nasce pelo cadastro da conta, com o salão e o cardápio de exemplo.

@@ -2,6 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createMemoryStore } from "@/lib/store/memory";
 
+// Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
+vi.mock("server-only", () => ({}));
+
 const after = vi.hoisted(() => vi.fn());
 const sendToStaff = vi.hoisted(() => vi.fn(async () => 1));
 vi.mock("next/server", () => ({ after }));

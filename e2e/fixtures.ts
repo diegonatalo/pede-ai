@@ -22,6 +22,28 @@ export const json = (data: unknown) => ({ data, headers: { "content-type": "appl
 /** Identificador curto e único: os testes rodam em paralelo e podem repetir contra o mesmo servidor. */
 export const uniqueId = () => `${Date.now() % 1e8}${Math.floor(Math.random() * 1e4)}`;
 
+export const PASSWORD = "senha-forte-1";
+
+/** E-mail único por teste: cada um começa com uma conta nova e vazia. */
+export const uniqueEmail = () => `dono-${uniqueId()}@exemplo.com`;
+
+/**
+ * Cria uma conta pela API do Better Auth, com o aceite dos termos. A resposta já traz o
+ * cookie de sessão, que fica no contexto do teste.
+ */
+export const signUpByApi = async (
+  request: APIRequestContext,
+  baseURL: string,
+  { name = "Pessoa de Teste", email = uniqueEmail() }: { name?: string; email?: string } = {},
+) => {
+  const response = await request.post("/api/auth/sign-up/email", {
+    data: { name, email, password: PASSWORD, termsVersion: TERMS_VERSION },
+    headers: { "content-type": "application/json", origin: baseURL },
+  });
+  expect(response.ok(), await response.text()).toBe(true);
+  return email;
+};
+
 type StaffRole = "manager" | "waiter" | "kitchen";
 
 /** Restaurante criado pelo fluxo real (conta + cadastro), só deste teste. */
@@ -52,11 +74,7 @@ export const createRestaurant = async (owner: APIRequestContext, baseURL: string
   const id = uniqueId();
   const slug = `teste-${id}`;
   const ownerName = "Dona";
-  const signUp = await owner.post("/api/auth/sign-up/email", {
-    data: { name: ownerName, email: `dona-${id}@exemplo.com`, password: "senha-forte-1", termsVersion: TERMS_VERSION },
-    headers: { "content-type": "application/json", origin: baseURL },
-  });
-  expect(signUp.ok(), await signUp.text()).toBe(true);
+  await signUpByApi(owner, baseURL, { name: ownerName, email: `dona-${id}@exemplo.com` });
 
   const created = await owner.post("/api/account/restaurants", json({ name: "Casa Teste", slug }));
   expect(created.ok(), await created.text()).toBe(true);
@@ -150,7 +168,7 @@ export const joinAndOpenTab = async (
 export const openOwnRestaurant = async (page: Page) => {
   const id = uniqueId();
   const slug = `teste-${id}`;
-  await page.goto("/conta");
+  await page.goto("/entrar");
   await page.getByRole("button", { name: "Criar conta" }).click();
   await page.getByLabel("Seu nome").fill("Dona");
   const email = `dona-${id}@exemplo.com`;

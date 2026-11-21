@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Página logada: nada dela é pré-renderizado como se fosse pública.
+export const instant = false;
+
 export default function Page() {
   return <AccountApp />;
 }

@@ -18,17 +18,17 @@ pnpm dev        # http://localhost:3000
 | `pnpm test:watch` | Reexecuta os testes ao salvar |
 | `pnpm test:e2e` | Roda os testes de ponta a ponta (Playwright) |
 | `pnpm db:generate` | Gera uma migração nova a partir de `lib/db/schema.ts` |
-| `pnpm db:migrate` | Aplica as migrações no banco do `.env.local` (conexão direta) |
+| `pnpm db:migrate` | Aplica as migrações no banco do `.env.local` (a branch `dev` do Neon) |
 
 ### 🔑 Variáveis de ambiente
 
-Todas são opcionais no computador: sem banco, os dados ficam na memória do servidor.
+Todas são opcionais no computador: sem banco, os dados ficam na memória do servidor. Copie o `.env.example` para `.env.local`; a `DATABASE_URL` dele é a de uma branch `dev` do Neon, nunca a de produção.
 
 | Variável | Descrição | Se não definir |
 |---|---|---|
 | `DATABASE_URL` | Postgres (Neon) com pooling, usado pelo app. Criada pela integração Neon da Vercel. | Dados na memória |
 | `DATABASE_URL_UNPOOLED` | Conexão direta, usada pelas migrações (`pnpm db:migrate`). | Usa a `DATABASE_URL` |
-| `PEDE_AI_STORE` | `postgres` para usar o banco no computador. Fora da Vercel, o padrão é a memória, para o `pnpm dev` e o E2E não gravarem no banco de produção. | Memória |
+| `PEDE_AI_STORE` | `postgres` para o `pnpm dev` usar o banco do `.env.local`. Fora da Vercel, o padrão é a memória (o E2E também roda nela). | Memória |
 | `TEST_DATABASE_URL` | Banco de teste (um branch do Neon) para rodar os testes do store no Postgres. Cada teste apaga as tabelas: nunca use o de produção. | Testes do Postgres pulados |
 | `SESSION_SECRET` | Chave que assina os cookies do cliente e da equipe e, sem `BETTER_AUTH_SECRET`, também as sessões das contas. **Obrigatória na Vercel**: lá há várias instâncias, e cada uma geraria a própria chave. | Gera uma chave aleatória a cada início do servidor |
 | `CRON_SECRET` | Senha da rotina diária de privacidade (`/api/cron/privacy`). Vai na Vercel e, com o mesmo valor, nos segredos do repositório no GitHub: o workflow `privacy-cleanup.yml` chama a rota todo dia às 6h de Brasília. | A limpeza não roda |

@@ -6,15 +6,18 @@ import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { authClient } from "@/lib/auth/client";
 import { authErrorMessage } from "@/lib/auth/messages";
+import { RETURN_PARAM, safeReturnPath } from "@/lib/auth/paths";
 import { cn } from "@/lib/cn";
 import { TERMS_VERSION } from "@/lib/terms";
 
 type Mode = "sign-in" | "sign-up";
 
-type Props = { onSignedIn: () => void };
+/** Navegação completa: o servidor (e o proxy) passam a ver o cookie novo da sessão. */
+const goToAccount = () =>
+  window.location.assign(safeReturnPath(new URLSearchParams(window.location.search).get(RETURN_PARAM)));
 
 /** Entrar ou criar a conta do dono do restaurante, com e-mail e senha. */
-export const SignInForm = ({ onSignedIn }: Props) => {
+export const SignInForm = ({ onSignedIn = goToAccount }: { onSignedIn?: () => void }) => {
   const [mode, setMode] = useState<Mode>("sign-in");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

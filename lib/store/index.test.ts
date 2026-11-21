@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getStore, storeKind } from "@/lib/store";
 import type { Store } from "@/types/store";
+
+// Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
+vi.mock("server-only", () => ({}));
 
 const holder = globalThis as typeof globalThis & { __pedeAiStores?: Map<string, Store> };
 

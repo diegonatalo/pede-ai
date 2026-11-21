@@ -4,7 +4,7 @@ const HOME = "O pedido sai da mesa e chega na cozinha. A conta sai certa para ca
 
 for (const { path, heading } of [
   { path: "/", heading: HOME },
-  { path: "/conta", heading: "Entrar na sua conta" },
+  { path: "/entrar", heading: "Entrar na sua conta" },
   { path: "/privacidade", heading: "Privacidade" },
   { path: "/termos", heading: "Termos de uso" },
 ]) {
