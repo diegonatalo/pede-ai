@@ -1,5 +1,6 @@
 import "server-only";
 import { drizzle } from "drizzle-orm/neon-http";
+import { assertDevDatabase } from "@/lib/dev-database";
 import * as schema from "./schema";
 
 export type Db = ReturnType<typeof drizzle<typeof schema>>;
@@ -16,6 +17,8 @@ const holder = globalThis as typeof globalThis & { __pedeAiDb?: Db };
  * restaurante. Criada só no primeiro uso: sem `DATABASE_URL`, o app usa a memória.
  */
 export const getDb = (): Db => {
+  // só no `next dev`: a trava não roda no site publicado
+  if (process.env.NODE_ENV === "development") assertDevDatabase(process.env);
   holder.__pedeAiDb ??= createDb(process.env.DATABASE_URL as string);
   return holder.__pedeAiDb;
 };

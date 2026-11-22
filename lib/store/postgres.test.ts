@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDb } from "@/lib/db";
+import { assertDevDatabase } from "@/lib/dev-database";
 import { newRestaurantData, sampleRestaurantData } from "@/lib/restaurant-template";
 import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
@@ -21,10 +22,11 @@ import { describeStoreContract } from "@/lib/store/store-contract";
 vi.mock("server-only", () => ({}));
 
 // Banco de TESTE, nunca o de produção: cada teste apaga todas as tabelas.
-// No Neon, use um banco separado (ex.: CREATE DATABASE pede_ai_test, com as migrações aplicadas)
+// No Neon, use um banco separado (ex.: CREATE DATABASE pede_ai_dev_test, com as migrações aplicadas)
 // ou um branch, e ponha a URL dele em TEST_DATABASE_URL no .env.local.
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 const url = process.env.TEST_DATABASE_URL;
+if (url) assertDevDatabase(process.env, ["TEST_DATABASE_URL"]);
 const SAMPLE = { restaurantId: RESTAURANT.id };
 
 describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", () => {
