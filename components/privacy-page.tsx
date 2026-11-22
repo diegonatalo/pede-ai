@@ -5,7 +5,7 @@ import { RETENTION_DAYS } from "@/lib/privacy";
 import { PRIVACY_EMAIL } from "@/lib/site";
 
 /** Data da última mudança desta política (`AAAA-MM-DD`). */
-const UPDATED_AT = "2026-11-20";
+const UPDATED_AT = "2026-11-22";
 
 const AccountLink = () => (
   <Link href="/conta" className={linkClass}>
@@ -18,7 +18,7 @@ export const PrivacyPage = () => (
   <LegalPage
     header={<HomeBrandLink />}
     title="Privacidade"
-    summary="O que o Pede Aí guarda, para quê, por quanto tempo e como apagar."
+    summary="O que o Pede Aí guarda, quem consegue ler, por quanto tempo e como apagar."
     updatedAt={UPDATED_AT}
     sections={[
       {
@@ -71,12 +71,31 @@ export const PrivacyPage = () => (
             <p>
               Se alguém da equipe ativa os <strong>avisos no celular</strong>, guardamos o endereço que o navegador
               fornece para entregar as notificações. Esse endereço é do serviço de notificações do próprio navegador
-              (do Google, da Apple ou da Mozilla, conforme o aparelho), que recebe só o aviso, sem dados dos clientes.
+              (do Google, da Apple ou da Mozilla, conforme o aparelho, e pode ficar fora do Brasil). O aviso
+              pode levar a mesa, o item, o <strong>nome da comanda e o recado do cliente</strong>: vai criptografado
+              até o aparelho, então esse serviço não lê o conteúdo, mas ele pode aparecer na tela bloqueada de quem
+              recebe.
               Desativar os avisos apaga esse endereço, e ele também some quando a pessoa sai da equipe ou o restaurante é excluído.
             </p>
             <p>
               O dono pode <strong>excluir um restaurante ou a conta inteira</strong> a qualquer momento, em{" "}
-              <AccountLink />. Tudo é apagado de verdade: cardápio, mesas, equipe, pedidos e números.
+              <AccountLink />. Cardápio, mesas, equipe, pedidos e números saem do banco na hora e não voltam. Cópias
+              podem continuar por um tempo no histórico de recuperação da Neon e em cópias de segurança feitas para
+              manutenção.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: "quem-consegue-ler",
+        title: "Quem consegue ler",
+        content: (
+          <>
+            <p>No sistema, cada restaurante vê só os próprios dados.</p>
+            <p>
+              Fora dele, <strong>quem mantém o Pede Aí</strong> (Diego Natalo) administra o banco e a hospedagem e
+              tecnicamente consegue ler o que está guardado, como nomes das comandas, pedidos, observações e recados. Os
+              dados <strong>não têm criptografia de ponta a ponta</strong>. Senhas e PINs não ficam guardados em texto.
             </p>
           </>
         ),
@@ -87,8 +106,9 @@ export const PrivacyPage = () => (
         content: (
           <p>
             Para barrar quem tenta adivinhar códigos de mesa ou PINs, contamos as tentativas erradas de cada endereço
-            de internet (IP). O IP não é guardado como está: vira uma chave embaralhada, e as contagens são apagadas
-            em até um dia.
+            de internet (IP). Nessa contagem o IP vira uma chave embaralhada, apagada na limpeza diária depois de
+            um dia. Já no <strong>login do dono</strong>, cada sessão guarda o IP e o navegador usados, que podem ficar
+            no banco até a conta ser excluída.
           </p>
         ),
       },
@@ -108,7 +128,9 @@ export const PrivacyPage = () => (
         content: (
           <p>
             O site roda na <strong>Vercel</strong>, que registra dados técnicos de acesso (como IP e navegador) para
-            entregar o site, e os dados ficam num banco Postgres da <strong>Neon</strong>, em São Paulo. A conexão é
+            entregar o site, e os dados ficam num banco Postgres da <strong>Neon</strong>, em São Paulo. O servidor
+            que lê e grava também roda em São Paulo, mas as duas empresas são estrangeiras e podem tratar dados fora
+            do Brasil (transferência internacional, LGPD, art. 33). A conexão é
             sempre criptografada (HTTPS).
           </p>
         ),
