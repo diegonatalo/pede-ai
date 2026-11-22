@@ -16,9 +16,8 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import type { BatchItem } from "drizzle-orm/batch";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { createDb, type Db } from "@/lib/db";
+import type { Db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
 import type { PushStore } from "@/lib/push";
@@ -64,7 +63,18 @@ const {
   pushSubscriptions,
 } = schema;
 
-type Batch = [BatchItem<"pg">, ...BatchItem<"pg">[]];
+type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+
+/**
+ * Roda as consultas em ordem, numa transação só: grava tudo ou nada, e as leituras veem o
+ * mesmo instante do banco. As consultas são montadas com o `tx`, senão sairiam da transação.
+ */
+const atomic = <const T extends readonly PromiseLike<unknown>[]>(db: Db, build: (tx: Tx) => T) =>
+  db.transaction(async (tx) => {
+    const results: unknown[] = [];
+    for (const query of build(tx)) results.push(await query);
+    return results as { -readonly [K in keyof T]: Awaited<T[K]> };
+  });
 
 // --- linhas do banco ↔ domínio (null no banco = campo ausente no domínio) ---
 
@@ -217,7 +227,7 @@ const pgError = (error: unknown): { code?: string; message: string } => {
 };
 
 /** Linhas de um restaurante inteiro (configuração, salão, cardápio e equipe) para gravar de uma vez. */
-const restaurantRows = (db: Db, data: RestaurantData, pinKey: StaffPinKey) => ({
+const restaurantRows = (db: Tx, data: RestaurantData, pinKey: StaffPinKey) => ({
   restaurant: db.insert(restaurants).values({ ...data.restaurant, ownerUserId: data.ownerUserId }),
   tables: db.insert(diningTables).values(data.tables.map((table, position) => ({ ...table, position }))),
   spots: db
@@ -232,14 +242,10 @@ const restaurantRows = (db: Db, data: RestaurantData, pinKey: StaffPinKey) => ({
 
 
 /**
- * Repositório no Postgres (Neon, pelo driver HTTP). Cada operação é uma requisição só:
- * leituras em `batch`, e cada gravação num `batch`, que o Neon roda como uma transação.
+ * Repositório no Postgres (Neon, pelo driver `pg`). Cada gravação, e cada leitura de várias
+ * tabelas, roda numa transação (`atomic`).
  */
-export const createPostgresRepository = (
-  url: string,
-  { restaurantId, db: shared }: { restaurantId: string; db?: Db },
-): Repository => {
-  const db: Db = shared ?? createDb(url);
+export const createPostgresRepository = ({ restaurantId, db }: { restaurantId: string; db: Db }): Repository => {
   /** Sessões deste restaurante: toda consulta por comanda, item ou chamado passa por aqui. */
   const ownSessions = () =>
     db.select({ id: tableSessions.id }).from(tableSessions).where(eq(tableSessions.restaurantId, restaurantId));
@@ -250,13 +256,13 @@ export const createPostgresRepository = (
     // Nunca carrega mesa de outro restaurante, nem pelo id.
     const where = and(condition, eq(tableSessions.restaurantId, restaurantId)) as SQL;
     const ids = db.select({ id: tableSessions.id }).from(tableSessions).where(where);
-    const [sessionRows, tabRows, orderRows, itemRows, callRows] = await db.batch([
-      db.select().from(tableSessions).where(where).orderBy(asc(tableSessions.n)),
-      db.select().from(tabs).where(inArray(tabs.sessionId, ids)).orderBy(asc(tabs.n)),
-      db.select().from(orders).where(inArray(orders.sessionId, ids)).orderBy(asc(orders.n)),
-      db.select().from(orderItems).where(inArray(orderItems.sessionId, ids)).orderBy(asc(orderItems.n)),
-      db.select().from(waiterCalls).where(inArray(waiterCalls.sessionId, ids)).orderBy(asc(waiterCalls.n)),
-    ]);
+    const [sessionRows, tabRows, orderRows, itemRows, callRows] = await atomic(db, (tx) => [
+      tx.select().from(tableSessions).where(where).orderBy(asc(tableSessions.n)),
+      tx.select().from(tabs).where(inArray(tabs.sessionId, ids)).orderBy(asc(tabs.n)),
+      tx.select().from(orders).where(inArray(orders.sessionId, ids)).orderBy(asc(orders.n)),
+      tx.select().from(orderItems).where(inArray(orderItems.sessionId, ids)).orderBy(asc(orderItems.n)),
+      tx.select().from(waiterCalls).where(inArray(waiterCalls.sessionId, ids)).orderBy(asc(waiterCalls.n)),
+    ] as const);
     return sessionRows.map((row) => ({
       session: toSession(row),
       secret: toSecret(row),
@@ -275,10 +281,10 @@ export const createPostgresRepository = (
     },
 
     async saveRestaurant(restaurant, event) {
-      await db.batch([
-        db.update(restaurants).set(restaurant).where(eq(restaurants.id, restaurantId)),
-        db.insert(events).values(eventRow(event, restaurantId)),
-      ]);
+      await atomic(db, (tx) => [
+        tx.update(restaurants).set(restaurant).where(eq(restaurants.id, restaurantId)),
+        tx.insert(events).values(eventRow(event, restaurantId)),
+      ] as const);
     },
 
     // Sem cache: o gerente edita o salão, e cada instância da Vercel precisa ver a mudança.
@@ -304,47 +310,49 @@ export const createPostgresRepository = (
       const ownTable = eq(diningTables.restaurantId, restaurantId);
       const ownSpot = eq(mapSpots.restaurantId, restaurantId);
       const spotIds = floor.mapSpots.map((spot) => spot.id);
-      const writes: BatchItem<"pg">[] = [];
-      // Mesas não são apagadas (as sessões antigas apontam para elas): arquivar é marcar `archived`.
-      if (floor.tables.length > 0) {
-        writes.push(
-          db
-            .insert(diningTables)
-            .values(floor.tables.map((table, position) => ({ ...table, restaurantId, position })))
-            .onConflictDoUpdate({ target: diningTables.id, set: replaceAll(diningTables, ["id"]), setWhere: ownTable }),
-        );
-      }
-      writes.push(db.delete(mapSpots).where(spotIds.length > 0 ? and(ownSpot, notInArray(mapSpots.id, spotIds)) : ownSpot));
-      if (floor.mapSpots.length > 0) {
-        writes.push(
-          db
-            .insert(mapSpots)
-            .values(floor.mapSpots.map((spot, position) => ({ ...spot, tableId: spot.tableId ?? null, restaurantId, position })))
-            .onConflictDoUpdate({ target: mapSpots.id, set: replaceAll(mapSpots, ["id"]), setWhere: ownSpot }),
-        );
-      }
-      writes.push(db.insert(events).values(eventRow(event, restaurantId)));
-      await db.batch(writes as Batch);
+      await atomic(db, (tx) => {
+        const writes: PromiseLike<unknown>[] = [];
+        // Mesas não são apagadas (as sessões antigas apontam para elas): arquivar é marcar `archived`.
+        if (floor.tables.length > 0) {
+          writes.push(
+            tx
+              .insert(diningTables)
+              .values(floor.tables.map((table, position) => ({ ...table, restaurantId, position })))
+              .onConflictDoUpdate({ target: diningTables.id, set: replaceAll(diningTables, ["id"]), setWhere: ownTable }),
+          );
+        }
+        writes.push(tx.delete(mapSpots).where(spotIds.length > 0 ? and(ownSpot, notInArray(mapSpots.id, spotIds)) : ownSpot));
+        if (floor.mapSpots.length > 0) {
+          writes.push(
+            tx
+              .insert(mapSpots)
+              .values(floor.mapSpots.map((spot, position) => ({ ...spot, tableId: spot.tableId ?? null, restaurantId, position })))
+              .onConflictDoUpdate({ target: mapSpots.id, set: replaceAll(mapSpots, ["id"]), setWhere: ownSpot }),
+          );
+        }
+        writes.push(tx.insert(events).values(eventRow(event, restaurantId)));
+        return writes;
+      });
     },
 
     async getMenu() {
-      const [categories, items] = await db.batch([
-        db
+      const [categories, items] = await atomic(db, (tx) => [
+        tx
           .select()
           .from(menuCategories)
           .where(eq(menuCategories.restaurantId, restaurantId))
           .orderBy(asc(menuCategories.position)),
-        db.select().from(menuItems).where(eq(menuItems.restaurantId, restaurantId)).orderBy(asc(menuItems.position)),
-      ]);
+        tx.select().from(menuItems).where(eq(menuItems.restaurantId, restaurantId)).orderBy(asc(menuItems.position)),
+      ] as const);
       return { categories, items: items.map(toMenuItem) };
     },
 
     async saveMenuItem(item, event) {
       const { id, ...fields } = item;
-      await db.batch([
-        db.update(menuItems).set(fields).where(and(eq(menuItems.id, id), eq(menuItems.restaurantId, restaurantId))),
-        db.insert(events).values(eventRow(event, restaurantId)),
-      ]);
+      await atomic(db, (tx) => [
+        tx.update(menuItems).set(fields).where(and(eq(menuItems.id, id), eq(menuItems.restaurantId, restaurantId))),
+        tx.insert(events).values(eventRow(event, restaurantId)),
+      ] as const);
     },
 
     async saveMenu(menu, event) {
@@ -352,32 +360,34 @@ export const createPostgresRepository = (
       const ownItem = eq(menuItems.restaurantId, restaurantId);
       const categoryIds = menu.categories.map((category) => category.id);
       const itemIds = menu.items.map((item) => item.id);
-      const writes: BatchItem<"pg">[] = [];
-      // Upsert só troca linhas do próprio restaurante (`setWhere`); ids de outro ficam como estão.
-      if (menu.categories.length > 0) {
+      await atomic(db, (tx) => {
+        const writes: PromiseLike<unknown>[] = [];
+        // Upsert só troca linhas do próprio restaurante (`setWhere`); ids de outro ficam como estão.
+        if (menu.categories.length > 0) {
+          writes.push(
+            tx
+              .insert(menuCategories)
+              .values(menu.categories.map((category, position) => ({ ...category, restaurantId, position })))
+              .onConflictDoUpdate({ target: menuCategories.id, set: replaceAll(menuCategories, ["id"]), setWhere: ownCategory }),
+          );
+        }
+        if (menu.items.length > 0) {
+          writes.push(
+            tx
+              .insert(menuItems)
+              .values(menu.items.map((item, position) => ({ ...item, restaurantId, position })))
+              .onConflictDoUpdate({ target: menuItems.id, set: replaceAll(menuItems, ["id"]), setWhere: ownItem }),
+          );
+        }
         writes.push(
-          db
-            .insert(menuCategories)
-            .values(menu.categories.map((category, position) => ({ ...category, restaurantId, position })))
-            .onConflictDoUpdate({ target: menuCategories.id, set: replaceAll(menuCategories, ["id"]), setWhere: ownCategory }),
+          tx.delete(menuItems).where(itemIds.length > 0 ? and(ownItem, notInArray(menuItems.id, itemIds)) : ownItem),
+          tx
+            .delete(menuCategories)
+            .where(categoryIds.length > 0 ? and(ownCategory, notInArray(menuCategories.id, categoryIds)) : ownCategory),
+          tx.insert(events).values(eventRow(event, restaurantId)),
         );
-      }
-      if (menu.items.length > 0) {
-        writes.push(
-          db
-            .insert(menuItems)
-            .values(menu.items.map((item, position) => ({ ...item, restaurantId, position })))
-            .onConflictDoUpdate({ target: menuItems.id, set: replaceAll(menuItems, ["id"]), setWhere: ownItem }),
-        );
-      }
-      writes.push(
-        db.delete(menuItems).where(itemIds.length > 0 ? and(ownItem, notInArray(menuItems.id, itemIds)) : ownItem),
-        db
-          .delete(menuCategories)
-          .where(categoryIds.length > 0 ? and(ownCategory, notInArray(menuCategories.id, categoryIds)) : ownCategory),
-        db.insert(events).values(eventRow(event, restaurantId)),
-      );
-      await db.batch(writes as Batch);
+        return writes;
+      });
     },
 
     async findSessionId(ref) {
@@ -423,8 +433,8 @@ export const createPostgresRepository = (
 
     async insertSession({ session, secret }, event) {
       try {
-        await db.batch([
-          db.insert(tableSessions).values({
+        await atomic(db, (tx) => [
+          tx.insert(tableSessions).values({
             ...session,
             closedAt: session.closedAt ?? null,
             joinCode: secret.joinCode,
@@ -432,8 +442,8 @@ export const createPostgresRepository = (
             lockedUntil: secret.lockedUntil ?? null,
             version: 1,
           }),
-          db.insert(events).values(eventRow(event, restaurantId)),
-        ]);
+          tx.insert(events).values(eventRow(event, restaurantId)),
+        ] as const);
         return true;
       } catch (error) {
         // Índice "uma sessão aberta por mesa": outro garçom abriu a mesa antes.
@@ -443,52 +453,55 @@ export const createPostgresRepository = (
     },
 
     async saveSession(sessionId, expectedVersion, changes, event) {
-      const queries: BatchItem<"pg">[] = [
-        db.execute(sql`select pede_ai_bump_session_version(${sessionId}, ${expectedVersion})`),
-      ];
-      if (changes.session || changes.secret) {
-        queries.push(
-          db
-            .update(tableSessions)
-            .set({
-              ...(changes.session && { status: changes.session.status, closedAt: changes.session.closedAt ?? null }),
-              ...(changes.secret && {
-                joinCode: changes.secret.joinCode,
-                failedAttempts: changes.secret.failedAttempts,
-                lockedUntil: changes.secret.lockedUntil ?? null,
-              }),
-            })
-            .where(eq(tableSessions.id, sessionId)),
-        );
-      }
-      if (changes.tabs?.length) {
-        queries.push(db.insert(tabs).values(changes.tabs).onConflictDoUpdate({ target: tabs.id, set: replaceAll(tabs) }));
-      }
-      if (changes.orders?.length) {
-        queries.push(
-          db.insert(orders).values(changes.orders).onConflictDoUpdate({ target: orders.id, set: replaceAll(orders) }),
-        );
-      }
-      if (changes.items?.length) {
-        queries.push(
-          db
-            .insert(orderItems)
-            .values(changes.items.map((item) => ({ ...item, sessionId, note: item.note ?? null })))
-            .onConflictDoUpdate({ target: orderItems.id, set: replaceAll(orderItems) }),
-        );
-      }
-      if (changes.calls?.length) {
-        queries.push(
-          db
-            .insert(waiterCalls)
-            .values(changes.calls.map((call) => ({ ...call, tabId: call.tabId ?? null, message: call.message ?? null })))
-            .onConflictDoUpdate({ target: waiterCalls.id, set: replaceAll(waiterCalls) }),
-        );
-      }
-      if (event) queries.push(db.insert(events).values(eventRow(event, restaurantId)));
+      const build = (tx: Tx) => {
+        const queries: PromiseLike<unknown>[] = [
+          tx.execute(sql`select pede_ai_bump_session_version(${sessionId}, ${expectedVersion})`),
+        ];
+        if (changes.session || changes.secret) {
+          queries.push(
+            tx
+              .update(tableSessions)
+              .set({
+                ...(changes.session && { status: changes.session.status, closedAt: changes.session.closedAt ?? null }),
+                ...(changes.secret && {
+                  joinCode: changes.secret.joinCode,
+                  failedAttempts: changes.secret.failedAttempts,
+                  lockedUntil: changes.secret.lockedUntil ?? null,
+                }),
+              })
+              .where(eq(tableSessions.id, sessionId)),
+          );
+        }
+        if (changes.tabs?.length) {
+          queries.push(tx.insert(tabs).values(changes.tabs).onConflictDoUpdate({ target: tabs.id, set: replaceAll(tabs) }));
+        }
+        if (changes.orders?.length) {
+          queries.push(
+            tx.insert(orders).values(changes.orders).onConflictDoUpdate({ target: orders.id, set: replaceAll(orders) }),
+          );
+        }
+        if (changes.items?.length) {
+          queries.push(
+            tx
+              .insert(orderItems)
+              .values(changes.items.map((item) => ({ ...item, sessionId, note: item.note ?? null })))
+              .onConflictDoUpdate({ target: orderItems.id, set: replaceAll(orderItems) }),
+          );
+        }
+        if (changes.calls?.length) {
+          queries.push(
+            tx
+              .insert(waiterCalls)
+              .values(changes.calls.map((call) => ({ ...call, tabId: call.tabId ?? null, message: call.message ?? null })))
+              .onConflictDoUpdate({ target: waiterCalls.id, set: replaceAll(waiterCalls) }),
+          );
+        }
+        if (event) queries.push(tx.insert(events).values(eventRow(event, restaurantId)));
+        return queries;
+      };
 
       try {
-        await db.batch(queries as Batch);
+        await atomic(db, build);
         return true;
       } catch (error) {
         const { code, message } = pgError(error);
@@ -503,10 +516,10 @@ export const createPostgresRepository = (
         sessionId === undefined
           ? and(own, gt(events.seq, afterSeq))
           : and(own, gt(events.seq, afterSeq), or(eq(events.sessionId, sessionId), isNull(events.sessionId)));
-      const [rows, [last]] = await db.batch([
-        db.select().from(events).where(filter).orderBy(asc(events.seq)),
-        db.select({ lastSeq: max(events.seq) }).from(events).where(own),
-      ]);
+      const [rows, [last]] = await atomic(db, (tx) => [
+        tx.select().from(events).where(filter).orderBy(asc(events.seq)),
+        tx.select({ lastSeq: max(events.seq) }).from(events).where(own),
+      ] as const);
       return { events: rows.map(toEvent), lastSeq: last?.lastSeq ?? 0 };
     },
 
@@ -537,10 +550,10 @@ export const createPostgresRepository = (
 
     async insertStaff(member, key, event) {
       try {
-        await db.batch([
-          db.insert(staffMembers).values({ ...member, pinKey: key }),
-          db.insert(events).values(eventRow(event, restaurantId)),
-        ]);
+        await atomic(db, (tx) => [
+          tx.insert(staffMembers).values({ ...member, pinKey: key }),
+          tx.insert(events).values(eventRow(event, restaurantId)),
+        ] as const);
         return true;
       } catch (error) {
         // Índice "um PIN por restaurante": o PIN sorteado já é de outra pessoa.
@@ -551,13 +564,13 @@ export const createPostgresRepository = (
 
     async updateStaff(member, key, event) {
       try {
-        await db.batch([
-          db
+        await atomic(db, (tx) => [
+          tx
             .update(staffMembers)
             .set({ name: member.name, role: member.role, active: member.active, ...(key !== null && { pinKey: key }) })
             .where(and(eq(staffMembers.id, member.id), eq(staffMembers.restaurantId, restaurantId))),
-          db.insert(events).values(eventRow(event, restaurantId)),
-        ]);
+          tx.insert(events).values(eventRow(event, restaurantId)),
+        ] as const);
         return true;
       } catch (error) {
         if (pgError(error).code === "23505") return false;
@@ -593,11 +606,13 @@ const toRecord = (row: typeof restaurants.$inferSelect): RestaurantRecord => ({
 });
 
 /** Cadastro dos restaurantes no Postgres. Criar um restaurante grava tudo numa transação só. */
-export const createPostgresRegistry = (
-  url: string,
-  { pinKey = defaultStaffPinKey(), db: shared }: { pinKey?: StaffPinKey; db?: Db } = {},
-): RestaurantRegistry => {
-  const db: Db = shared ?? createDb(url);
+export const createPostgresRegistry = ({
+  db,
+  pinKey = defaultStaffPinKey(),
+}: {
+  db: Db;
+  pinKey?: StaffPinKey;
+}): RestaurantRegistry => {
   return {
     async findBySlug(slug) {
       const [row] = await db.select().from(restaurants).where(eq(restaurants.slug, slug));
@@ -608,9 +623,11 @@ export const createPostgresRegistry = (
       return rows.map(toRecord);
     },
     async create(data) {
-      const rows = restaurantRows(db, data, pinKey);
       try {
-        await db.batch([rows.restaurant, rows.tables, rows.spots, rows.categories, rows.items, rows.staff]);
+        await atomic(db, (tx) => {
+          const rows = restaurantRows(tx, data, pinKey);
+          return [rows.restaurant, rows.tables, rows.spots, rows.categories, rows.items, rows.staff] as const;
+        });
         return true;
       } catch (error) {
         // Endereço (slug) já usado por outro restaurante.
@@ -624,39 +641,39 @@ export const createPostgresRegistry = (
         .from(tableSessions)
         .where(eq(tableSessions.restaurantId, restaurantId));
       // Numa transação, dos filhos para os pais (as chaves estrangeiras não apagam em cascata).
-      await db.batch([
-        db.delete(orderItems).where(inArray(orderItems.sessionId, sessions)),
-        db.delete(orders).where(inArray(orders.sessionId, sessions)),
-        db.delete(waiterCalls).where(inArray(waiterCalls.sessionId, sessions)),
-        db.delete(tabs).where(inArray(tabs.sessionId, sessions)),
-        db.delete(tableSessions).where(eq(tableSessions.restaurantId, restaurantId)),
-        db.delete(events).where(eq(events.restaurantId, restaurantId)),
-        db.delete(staffMembers).where(eq(staffMembers.restaurantId, restaurantId)),
-        db.delete(menuItems).where(eq(menuItems.restaurantId, restaurantId)),
-        db.delete(menuCategories).where(eq(menuCategories.restaurantId, restaurantId)),
-        db.delete(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)),
-        db.delete(diningTables).where(eq(diningTables.restaurantId, restaurantId)),
-        db.delete(pushSubscriptions).where(eq(pushSubscriptions.restaurantId, restaurantId)),
-        db.delete(restaurants).where(eq(restaurants.id, restaurantId)),
-      ]);
+      await atomic(db, (tx) => [
+        tx.delete(orderItems).where(inArray(orderItems.sessionId, sessions)),
+        tx.delete(orders).where(inArray(orders.sessionId, sessions)),
+        tx.delete(waiterCalls).where(inArray(waiterCalls.sessionId, sessions)),
+        tx.delete(tabs).where(inArray(tabs.sessionId, sessions)),
+        tx.delete(tableSessions).where(eq(tableSessions.restaurantId, restaurantId)),
+        tx.delete(events).where(eq(events.restaurantId, restaurantId)),
+        tx.delete(staffMembers).where(eq(staffMembers.restaurantId, restaurantId)),
+        tx.delete(menuItems).where(eq(menuItems.restaurantId, restaurantId)),
+        tx.delete(menuCategories).where(eq(menuCategories.restaurantId, restaurantId)),
+        tx.delete(mapSpots).where(eq(mapSpots.restaurantId, restaurantId)),
+        tx.delete(diningTables).where(eq(diningTables.restaurantId, restaurantId)),
+        tx.delete(pushSubscriptions).where(eq(pushSubscriptions.restaurantId, restaurantId)),
+        tx.delete(restaurants).where(eq(restaurants.id, restaurantId)),
+      ] as const);
     },
     async anonymizeClosedBefore(cutoff) {
       const old = db
         .select({ id: tableSessions.id })
         .from(tableSessions)
         .where(and(eq(tableSessions.status, "closed"), lt(tableSessions.closedAt, cutoff)));
-      const [renamed] = await db.batch([
-        db
+      const [renamed] = await atomic(db, (tx) => [
+        tx
           .update(tabs)
           .set({ customerName: ANONYMOUS_NAME })
           .where(and(inArray(tabs.sessionId, old), ne(tabs.customerName, ANONYMOUS_NAME)))
           .returning({ id: tabs.id }),
-        db.update(orderItems).set({ note: null }).where(and(inArray(orderItems.sessionId, old), isNotNull(orderItems.note))),
-        db
+        tx.update(orderItems).set({ note: null }).where(and(inArray(orderItems.sessionId, old), isNotNull(orderItems.note))),
+        tx
           .update(waiterCalls)
           .set({ message: null })
           .where(and(inArray(waiterCalls.sessionId, old), isNotNull(waiterCalls.message))),
-      ]);
+      ] as const);
       return renamed.length;
     },
   };
@@ -685,11 +702,11 @@ export const createPostgresAttemptCounter =
  * Limitador no Postgres: vale para todas as instâncias da Vercel. Somar uma falha é um upsert
  * atômico (duas requisições ao mesmo tempo não perdem contagem).
  */
-export const createPostgresRateLimiter = (
-  url: string,
-  { db: shared, failures = JOIN_LIMIT.failures, windowMs = JOIN_LIMIT.windowMs }: { db?: Db } & Partial<RateLimitConfig> = {},
-): RateLimiter => {
-  const db: Db = shared ?? createDb(url);
+export const createPostgresRateLimiter = ({
+  db,
+  failures = JOIN_LIMIT.failures,
+  windowMs = JOIN_LIMIT.windowMs,
+}: { db: Db } & Partial<RateLimitConfig>): RateLimiter => {
   return {
     async isBlocked(key, nowMs) {
       const [row] = await db.select().from(rateLimits).where(eq(rateLimits.key, key));
@@ -716,8 +733,7 @@ export const createPostgresRateLimiter = (
 };
 
 /** Inscrições de push no Postgres (vale para todas as instâncias). */
-export const createPostgresPushStore = (url: string, { db: shared }: { db?: Db } = {}): PushStore => {
-  const db: Db = shared ?? createDb(url);
+export const createPostgresPushStore = ({ db }: { db: Db }): PushStore => {
   return {
     async save(record) {
       await db

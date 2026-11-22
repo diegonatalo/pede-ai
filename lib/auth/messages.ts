@@ -5,6 +5,8 @@ const MESSAGES: Record<string, string> = {
   INVALID_EMAIL_OR_PASSWORD: "E-mail ou senha errados.",
   INVALID_EMAIL: "Este e-mail não parece válido.",
   INVALID_PASSWORD: "Senha errada.",
+  PASSWORD_REQUIRED: "Digite a sua senha para excluir a conta.",
+  INVALID_NAME: "O nome precisa ter de 1 a 60 caracteres.",
   PASSWORD_TOO_SHORT: "A senha precisa ter pelo menos 8 caracteres.",
   PASSWORD_TOO_LONG: "A senha está longa demais.",
   USER_NOT_FOUND: "Não achamos uma conta com este e-mail.",

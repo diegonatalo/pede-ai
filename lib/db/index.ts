@@ -1,37 +1,41 @@
 import "server-only";
-import { drizzle } from "drizzle-orm/neon-http";
+import { attachDatabasePool } from "@vercel/functions";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import { assertDevDatabase } from "@/lib/dev-database";
-import { hideQueryValues, toSafeError } from "./safe-errors";
+import { hideQueryValues } from "./safe-errors";
 import * as schema from "./schema";
 
 // o erro de uma consulta nunca leva os valores dela para o log
 hideQueryValues();
 
-export type Db = ReturnType<typeof drizzle<typeof schema>>;
-
-/** Conexão (HTTP) com o Neon para uma URL. Os testes do store no Postgres usam a do banco de teste. */
-export const createDb = (url: string): Db => {
-  const db = drizzle(url, { schema });
-  // o `batch` não passa pelo caminho das outras consultas
-  const batch = db.batch.bind(db);
-  db.batch = ((queries: Parameters<Db["batch"]>[0]) =>
-    batch(queries).catch((error: unknown) => {
-      throw toSafeError(error);
-    })) as unknown as Db["batch"];
-  return db;
-};
-
-// Guardada no globalThis para sobreviver ao recarregamento de módulos do `next dev`
-// (e porque cada rota pode carregar a própria cópia deste módulo).
-const holder = globalThis as typeof globalThis & { __pedeAiDb?: Db };
+// só no `next dev`: a trava não roda no site publicado
+if (process.env.NODE_ENV === "development") assertDevDatabase(process.env);
 
 /**
- * A conexão do app, repartida entre o login, o cadastro e os repositórios de cada
- * restaurante. Criada só no primeiro uso: sem `DATABASE_URL`, o app usa a memória.
+ * One pool per server instance. `DATABASE_URL` is the pooled Neon URL in
+ * production and a local Postgres in CI; the pool only connects on the first query.
  */
-export const getDb = (): Db => {
-  // só no `next dev`: a trava não roda no site publicado
-  if (process.env.NODE_ENV === "development") assertDevDatabase(process.env);
-  holder.__pedeAiDb ??= createDb(process.env.DATABASE_URL as string);
-  return holder.__pedeAiDb;
+const globalForDb = globalThis as unknown as { dbPool?: Pool };
+
+const createPool = () => {
+  // idle connections close quickly, before the function is suspended (Vercel and Neon guidance)
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, idleTimeoutMillis: 5000 });
+  // An idle connection the server drops (Neon scaling to zero, a restart) emits "error" on the
+  // pool; without a listener it is an uncaught exception. The pool replaces the client by itself.
+  pool.on("error", (error: Error & { code?: string }) => {
+    console.error("Postgres idle connection lost", error.code ?? error.message);
+  });
+  // on Vercel, closes idle connections before the instance is suspended; elsewhere it does nothing
+  attachDatabasePool(pool);
+  return pool;
 };
+
+const pool = globalForDb.dbPool ?? createPool();
+
+// in dev, hot reloads would open a new pool on every edit
+if (process.env.NODE_ENV !== "production") globalForDb.dbPool = pool;
+
+export const db = drizzle(pool, { schema });
+
+export type Db = typeof db;

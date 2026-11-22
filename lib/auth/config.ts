@@ -2,6 +2,9 @@ import { readSessionSecret } from "@/lib/api/config";
 
 type Env = Record<string, string | undefined>;
 
+/** Nome da pessoa da conta: o mesmo limite no formulário e no servidor. */
+export const USER_NAME_MAX = 60;
+
 /** Hosts locais aceitos fora da Vercel (`pnpm dev`, `pnpm start` do E2E), em qualquer porta. */
 const LOCAL_HOSTS = ["localhost:*", "127.0.0.1:*"];
 

@@ -3,9 +3,10 @@ import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { deleteOwnedRestaurants } from "@/lib/api/account";
-import { authBaseURL, authSecret, missingSecretOnVercel } from "@/lib/auth/config";
+import { authBaseURL, authSecret, missingSecretOnVercel, USER_NAME_MAX } from "@/lib/auth/config";
+import { guardAccountRoutes, limitUser } from "@/lib/auth-guard";
 import { createAuthRateLimit } from "@/lib/auth/rate-limit";
-import { getDb } from "@/lib/db";
+import { db } from "@/lib/db";
 import { authAccounts, authSessions, authUsers, authVerifications } from "@/lib/db/schema";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { getRegistry, storeKind } from "@/lib/store";
@@ -20,9 +21,11 @@ const termsNotAccepted = () =>
 /** Banco do login: o Postgres quando o app usa o Postgres; memória no resto (CI, E2E, `pnpm dev`). */
 const database = (env: Env) => {
   if (storeKind(env) === "postgres") {
-    return drizzleAdapter(getDb(), {
+    return drizzleAdapter(db, {
       provider: "pg",
       schema: { user: authUsers, session: authSessions, account: authAccounts, verification: authVerifications },
+      // o cadastro grava o usuário e a senha juntos: sem isso, uma falha deixa a conta sem senha
+      transaction: true,
     });
   }
   // Mesmo motivo do store: o globalThis sobrevive ao recarregamento e às cópias do módulo por rota.
@@ -41,13 +44,17 @@ export const createAuth = (env: Env = process.env) => {
     baseURL: authBaseURL(env, SITE_URL),
     secret: authSecret(env),
     database: database(env),
+    // excluir a conta sempre pede a senha (lib/auth-guard.ts)
+    hooks: { before: guardAccountRoutes() },
     // Limite de tentativas só na Vercel, contado no Postgres quando o app o usa. No `next start`
     // local (E2E), todos os testes vêm do mesmo endereço e criariam contas mais rápido que o
     // limite de cadastro (3 a cada 10 s).
     rateLimit: {
       enabled: Boolean(env.VERCEL),
+      // a senha de quem já está logado não pode ser adivinhada pela exclusão da conta
+      customRules: { "/delete-user": { window: 60, max: 5 } },
       ...(storeKind(env) === "postgres" && {
-        customStorage: createAuthRateLimit(createPostgresAttemptCounter(getDb()), authSecret(env)),
+        customStorage: createAuthRateLimit(createPostgresAttemptCounter(db), authSecret(env)),
       }),
     },
     user: {
@@ -71,16 +78,16 @@ export const createAuth = (env: Env = process.env) => {
           before: async (user) => {
             const accepted = termsAcceptance(user.termsVersion, new Date());
             if (!accepted) throw termsNotAccepted();
-            return { data: { ...user, ...accepted } };
+            return { data: limitUser({ ...user, ...accepted }, USER_NAME_MAX) };
           },
         },
         // Quem já tem conta aceita a versão nova pela tela da conta (`updateUser`).
         update: {
           before: async (data) => {
-            if (data.termsVersion === undefined) return;
+            if (data.termsVersion === undefined) return { data: limitUser(data, USER_NAME_MAX) };
             const accepted = termsAcceptance(data.termsVersion, new Date());
             if (!accepted) throw termsNotAccepted();
-            return { data: { ...data, ...accepted } };
+            return { data: limitUser({ ...data, ...accepted }, USER_NAME_MAX) };
           },
         },
       },

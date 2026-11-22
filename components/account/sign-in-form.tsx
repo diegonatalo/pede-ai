@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { CenteredScreen } from "@/components/ui/centered-screen";
 import { BUTTON, CARD, INPUT, LABEL } from "@/components/ui/styles";
 import { authClient } from "@/lib/auth/client";
+import { USER_NAME_MAX } from "@/lib/auth/config";
 import { authErrorMessage } from "@/lib/auth/messages";
 import { RETURN_PARAM, safeReturnPath } from "@/lib/auth/paths";
 import { cn } from "@/lib/cn";
@@ -86,7 +87,14 @@ export const SignInForm = ({ onSignedIn = goToAccount }: { onSignedIn?: () => vo
         {mode === "sign-up" && (
           <label className="flex flex-col gap-2">
             <span className={LABEL}>Seu nome</span>
-            <input className={INPUT} autoComplete="name" required value={name} onChange={(event) => setName(event.target.value)} />
+            <input
+              className={INPUT}
+              autoComplete="name"
+              required
+              maxLength={USER_NAME_MAX}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
           </label>
         )}
         <label className="flex flex-col gap-2">

@@ -17,7 +17,10 @@ describe("storeKind", () => {
   it("usa memória no computador, mesmo com DATABASE_URL no .env.local", () => {
     expect(storeKind({ DATABASE_URL: url })).toBe("memory");
     expect(storeKind({})).toBe("memory");
-    expect(storeKind({ VERCEL: "1" })).toBe("memory");
+  });
+
+  it("na Vercel sem DATABASE_URL, para em vez de gravar na memória", () => {
+    expect(() => storeKind({ VERCEL: "1" })).toThrow("DATABASE_URL ausente");
   });
 
   it("usa o Postgres no computador só quando pedido", () => {
