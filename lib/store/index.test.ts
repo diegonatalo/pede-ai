@@ -5,6 +5,9 @@ import type { Store } from "@/types/store";
 // Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
 vi.mock("server-only", () => ({}));
 
+// O getStore daqui é o da memória, mesmo no CI (onde PEDE_AI_STORE=postgres vale para o job).
+vi.stubEnv("PEDE_AI_STORE", "");
+
 const holder = globalThis as typeof globalThis & { __pedeAiStores?: Map<string, Store> };
 
 describe("storeKind", () => {

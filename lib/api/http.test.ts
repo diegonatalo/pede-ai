@@ -10,6 +10,9 @@ import { getRegistry, getStore } from "@/lib/store";
 // Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
 vi.mock("server-only", () => ({}));
 
+// Estes testes usam o mundo em memória, mesmo no CI (onde PEDE_AI_STORE=postgres vale para o job).
+vi.stubEnv("PEDE_AI_STORE", "");
+
 // Restaurante de exemplo, criado no mundo em memória do processo antes dos testes.
 const URL_BASE = "http://localhost/api/teste?r=demo";
 

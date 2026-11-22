@@ -6,6 +6,9 @@ import { TERMS_VERSION } from "@/lib/terms";
 // Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
 vi.mock("server-only", () => ({}));
 
+// Excluir a conta apaga os restaurantes pelo store global: aqui ele é o da memória, mesmo no CI.
+vi.stubEnv("PEDE_AI_STORE", "");
+
 // Sem DATABASE_URL o login usa a memória. Cada teste usa um e-mail próprio, porque a memória
 // fica no globalThis do processo (como no `pnpm dev`).
 const auth = createAuth({ SESSION_SECRET: "segredo-de-teste-com-tamanho-suficiente" });
