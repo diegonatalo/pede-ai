@@ -4,7 +4,7 @@ import type { CountAttempt } from "@/lib/rate-limit";
 
 const countAttempt = vi.hoisted(() => vi.fn<CountAttempt>());
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/db", () => ({ getDb: () => ({}) }));
+vi.mock("@/lib/db", () => ({ db: {} }));
 vi.mock("@/lib/store/postgres", async (original) => ({
   ...(await original<object>()),
   createPostgresAttemptCounter: () => countAttempt,

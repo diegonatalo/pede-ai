@@ -6,6 +6,9 @@ import { TERMS_VERSION } from "@/lib/terms";
 // Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
 vi.mock("server-only", () => ({}));
 
+// Excluir a conta apaga os restaurantes pelo store global: aqui ele é o da memória, mesmo no CI.
+vi.stubEnv("PEDE_AI_STORE", "");
+
 // Sem DATABASE_URL o login usa a memória. Cada teste usa um e-mail próprio, porque a memória
 // fica no globalThis do processo (como no `pnpm dev`).
 const auth = createAuth({ SESSION_SECRET: "segredo-de-teste-com-tamanho-suficiente" });
@@ -78,5 +81,40 @@ describe("aceite dos termos", () => {
     const headers = new Headers({ cookie });
     expect(await codeOf(auth.api.updateUser({ headers, body: { termsVersion: "2020-01-01" } }))).toBe("TERMS_NOT_ACCEPTED");
     expect(await codeOf(auth.api.updateUser({ headers, body: { termsVersion: TERMS_VERSION } }))).toBe("ok");
+  });
+});
+
+describe("regras da conta pela API (lib/auth-guard.ts)", () => {
+  const ORIGIN = "http://localhost:3000";
+  const post = async (path: string, body: object, cookie?: string) => {
+    const response = await auth.handler(
+      new Request(`${ORIGIN}/api/auth/${path}`, {
+        method: "POST",
+        headers: { host: "localhost:3000", origin: ORIGIN, "content-type": "application/json", ...(cookie && { cookie }) },
+        body: JSON.stringify(body),
+      }),
+    );
+    const json = (await response.json().catch(() => null)) as { code?: string } | null;
+    return { status: response.status, code: json?.code, cookie: response.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ") };
+  };
+  const signUp = (name = "Eva", address = email()) =>
+    post("sign-up/email", { name, email: address, password: "senha-forte-1", termsVersion: TERMS_VERSION });
+
+  it("recusa nome grande demais no cadastro e na edição", async () => {
+    expect((await signUp("a".repeat(200_000))).code).toBe("INVALID_NAME");
+    const { cookie } = await signUp();
+    expect((await post("update-user", { name: "a".repeat(500_000) }, cookie)).code).toBe("INVALID_NAME");
+  });
+
+  it("excluir a conta pede a senha, mesmo com a sessão recém-criada", async () => {
+    const address = email();
+    const { cookie } = await signUp("Fábio", address);
+    expect((await post("delete-user", {}, cookie)).code).toBe("PASSWORD_REQUIRED");
+    expect((await post("delete-user", { password: "errada-123" }, cookie)).code).toBe("INVALID_PASSWORD");
+    expect(await codeOf(auth.api.signInEmail({ body: { email: address, password: "senha-forte-1" } }))).toBe("ok");
+    expect((await post("delete-user", { password: "senha-forte-1" }, cookie)).status).toBe(200);
+    expect(await codeOf(auth.api.signInEmail({ body: { email: address, password: "senha-forte-1" } }))).toBe(
+      "INVALID_EMAIL_OR_PASSWORD",
+    );
   });
 });

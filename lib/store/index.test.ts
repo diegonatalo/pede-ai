@@ -5,6 +5,9 @@ import type { Store } from "@/types/store";
 // Fora do Next, o `server-only` sempre lança: aqui ele não faz nada, como no servidor.
 vi.mock("server-only", () => ({}));
 
+// O getStore daqui é o da memória, mesmo no CI (onde PEDE_AI_STORE=postgres vale para o job).
+vi.stubEnv("PEDE_AI_STORE", "");
+
 const holder = globalThis as typeof globalThis & { __pedeAiStores?: Map<string, Store> };
 
 describe("storeKind", () => {
@@ -17,7 +20,10 @@ describe("storeKind", () => {
   it("usa memória no computador, mesmo com DATABASE_URL no .env.local", () => {
     expect(storeKind({ DATABASE_URL: url })).toBe("memory");
     expect(storeKind({})).toBe("memory");
-    expect(storeKind({ VERCEL: "1" })).toBe("memory");
+  });
+
+  it("na Vercel sem DATABASE_URL, para em vez de gravar na memória", () => {
+    expect(() => storeKind({ VERCEL: "1" })).toThrow("DATABASE_URL ausente");
   });
 
   it("usa o Postgres no computador só quando pedido", () => {
