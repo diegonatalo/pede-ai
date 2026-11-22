@@ -18,6 +18,14 @@ export type RateLimiter = {
 
 export type RateLimitConfig = { failures: number; windowMs: number };
 
+export type Attempt = { key: string; nowMs: number; windowMs: number; max: number };
+
+/**
+ * Soma uma tentativa e devolve a contagem da janela, numa operação só: instâncias que
+ * contam ao mesmo tempo recebem números diferentes. A contagem para em `max + 1`.
+ */
+export type CountAttempt = (attempt: Attempt) => Promise<{ count: number; windowStart: number }>;
+
 /** Uma janela ainda vale se começou há menos de `windowMs`. */
 export const windowActive = (windowStart: number, nowMs: number, windowMs: number) => windowStart > nowMs - windowMs;
 

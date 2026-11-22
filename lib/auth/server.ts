@@ -4,10 +4,12 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { deleteOwnedRestaurants } from "@/lib/api/account";
 import { authBaseURL, authSecret, missingSecretOnVercel } from "@/lib/auth/config";
+import { createAuthRateLimit } from "@/lib/auth/rate-limit";
 import { getDb } from "@/lib/db";
 import { authAccounts, authSessions, authUsers, authVerifications } from "@/lib/db/schema";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { getRegistry, storeKind } from "@/lib/store";
+import { createPostgresAttemptCounter } from "@/lib/store/postgres";
 import { termsAcceptance } from "@/lib/terms";
 
 type Env = Record<string, string | undefined>;
@@ -39,9 +41,15 @@ export const createAuth = (env: Env = process.env) => {
     baseURL: authBaseURL(env, SITE_URL),
     secret: authSecret(env),
     database: database(env),
-    // Limite de tentativas só na Vercel. No `next start` local (E2E), todos os testes vêm do mesmo
-    // endereço e criariam contas mais rápido que o limite de cadastro (3 a cada 10 s).
-    rateLimit: { enabled: Boolean(env.VERCEL) },
+    // Limite de tentativas só na Vercel, contado no Postgres quando o app o usa. No `next start`
+    // local (E2E), todos os testes vêm do mesmo endereço e criariam contas mais rápido que o
+    // limite de cadastro (3 a cada 10 s).
+    rateLimit: {
+      enabled: Boolean(env.VERCEL),
+      ...(storeKind(env) === "postgres" && {
+        customStorage: createAuthRateLimit(createPostgresAttemptCounter(getDb()), authSecret(env)),
+      }),
+    },
     user: {
       // Aceite dos termos: o navegador manda a versão; a data é sempre a do servidor.
       additionalFields: {

@@ -105,10 +105,10 @@ export const PrivacyPage = () => (
         title: "Proteção contra abusos",
         content: (
           <p>
-            Para barrar quem tenta adivinhar códigos de mesa ou PINs, contamos as tentativas erradas de cada endereço
-            de internet (IP). Nessa contagem o IP vira uma chave embaralhada, apagada na limpeza diária depois de
-            um dia. Já no <strong>login do dono</strong>, cada sessão guarda o IP e o navegador usados, que podem ficar
-            no banco até a conta ser excluída.
+            Para barrar abusos, contamos por endereço de internet (IP) os códigos de mesa errados e as chamadas ao
+            login das contas. Nessas contagens o IP vira uma chave embaralhada, apagada na limpeza diária depois de um
+            dia. Os PINs errados são contados por restaurante, sem IP. Já no <strong>login do dono</strong>, cada sessão
+            guarda o IP e o navegador usados, que podem ficar no banco até a conta ser excluída.
           </p>
         ),
       },

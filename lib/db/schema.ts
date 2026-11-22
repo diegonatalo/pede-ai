@@ -286,7 +286,7 @@ export const authVerifications = pgTable(
 );
 
 /**
- * Falhas por chave numa janela de tempo (ex.: códigos de mesa errados por endereço de internet).
+ * Contagens por chave numa janela de tempo: códigos de mesa errados e tentativas de login.
  * A chave é um HMAC do endereço, nunca o endereço (ver lib/rate-limit.ts).
  */
 export const rateLimits = pgTable("rate_limits", {
