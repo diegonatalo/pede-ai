@@ -9,6 +9,7 @@ import { RESTAURANT } from "@/lib/seed-data";
 import { createStore } from "@/lib/store/engine";
 import { describeIsolationContract } from "@/lib/store/isolation-contract";
 import {
+  createPostgresAttemptCounter,
   createPostgresPushStore,
   createPostgresRateLimiter,
   createPostgresRegistry,
@@ -39,6 +40,25 @@ describe.skipIf(!url || url === process.env.DATABASE_URL)("store no Postgres", (
   });
 
   describeStoreContract((options) => createStore(createPostgresRepository(url as string, SAMPLE), options));
+
+  describe("contador de tentativas do login", () => {
+    const attempt = { key: "auth:teste", nowMs: 1_000_000, windowMs: 10_000, max: 3 };
+
+    it("tentativas ao mesmo tempo, em conexões separadas, recebem números diferentes", async () => {
+      const counters = [createPostgresAttemptCounter(createDb(url as string)), createPostgresAttemptCounter(createDb(url as string))];
+      const results = await Promise.all(Array.from({ length: 12 }, (_, i) => counters[i % 2](attempt)));
+      expect(results.filter((result) => result.count <= attempt.max).map((result) => result.count).sort()).toEqual([1, 2, 3]);
+      expect(Math.max(...results.map((result) => result.count))).toBe(attempt.max + 1);
+    });
+
+    it("insistir não estica a janela, e ela recomeça quando vence", async () => {
+      const count = createPostgresAttemptCounter(createDb(url as string));
+      await count(attempt);
+      expect(await count({ ...attempt, nowMs: attempt.nowMs + 9999 })).toEqual({ count: 2, windowStart: attempt.nowMs });
+      const later = attempt.nowMs + attempt.windowMs;
+      expect(await count({ ...attempt, nowMs: later })).toEqual({ count: 1, windowStart: later });
+    });
+  });
 
   describeRateLimiterContract((config) => createPostgresRateLimiter(url as string, config));
 

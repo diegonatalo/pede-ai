@@ -22,7 +22,7 @@ import { createDb, type Db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { ANONYMOUS_NAME } from "@/lib/privacy";
 import type { PushStore } from "@/lib/push";
-import { JOIN_LIMIT, windowActive, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
+import { JOIN_LIMIT, windowActive, type CountAttempt, type RateLimitConfig, type RateLimiter } from "@/lib/rate-limit";
 import type { RestaurantData } from "@/lib/restaurant-template";
 import { defaultStaffPinKey, type StaffPinKey } from "@/lib/staff-pin";
 import type {
@@ -661,6 +661,25 @@ export const createPostgresRegistry = (
     },
   };
 };
+
+/** Conta tentativas (login) num upsert só, que devolve o número desta tentativa. */
+export const createPostgresAttemptCounter =
+  (db: Db): CountAttempt =>
+  async ({ key, nowMs, windowMs, max }) => {
+    const expired = sql`${rateLimits.windowStart} <= ${nowMs - windowMs}`;
+    const [row] = await db
+      .insert(rateLimits)
+      .values({ key, count: 1, windowStart: nowMs })
+      .onConflictDoUpdate({
+        target: rateLimits.key,
+        set: {
+          count: sql`case when ${expired} then 1 else least(${rateLimits.count} + 1, ${max + 1}) end`,
+          windowStart: sql`case when ${expired} then ${nowMs} else ${rateLimits.windowStart} end`,
+        },
+      })
+      .returning({ count: rateLimits.count, windowStart: rateLimits.windowStart });
+    return row;
+  };
 
 /**
  * Limitador no Postgres: vale para todas as instâncias da Vercel. Somar uma falha é um upsert
