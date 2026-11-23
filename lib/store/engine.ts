@@ -499,22 +499,15 @@ export const createStore = (
 
     async verifyStaffPin(pin) {
       if (!isStaffPin(pin)) return fail("wrong_pin");
-      const guard = await repo.getStaffGuard();
-      const time = now().getTime();
-      if (guard.lockedUntil !== undefined && guard.lockedUntil > time) return fail("locked");
+      // A tentativa é reservada antes de conferir o PIN: com qualquer número de tentativas ao
+      // mesmo tempo, passam no máximo STAFF_PIN_ATTEMPTS até o bloqueio.
+      const limit = { max: STAFF_PIN_ATTEMPTS, lockMs: STAFF_PIN_LOCK_MS };
+      if (!(await repo.claimStaffPinAttempt(now().getTime(), limit))) return fail("locked");
       const restaurant = await repo.getRestaurant();
       const member = await repo.findStaffByPinKey(pinKey(restaurant.id, pin));
-      if (member?.active) {
-        if (guard.failedAttempts > 0 || guard.lockedUntil !== undefined) await repo.saveStaffGuard({ failedAttempts: 0 });
-        return ok(member);
-      }
-      const failedAttempts = guard.failedAttempts + 1;
-      if (failedAttempts >= STAFF_PIN_ATTEMPTS) {
-        await repo.saveStaffGuard({ failedAttempts: 0, lockedUntil: time + STAFF_PIN_LOCK_MS });
-        return fail("locked");
-      }
-      await repo.saveStaffGuard({ failedAttempts });
-      return fail("wrong_pin");
+      if (!member?.active) return fail("wrong_pin");
+      await repo.resetStaffPinAttempts();
+      return ok(member);
     },
 
     async getEvents(afterSeq, sessionId) {

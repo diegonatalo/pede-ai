@@ -9,6 +9,7 @@ import {
   isNotNull,
   isNull,
   lt,
+  lte,
   max,
   ne,
   notInArray,
@@ -578,22 +579,36 @@ export const createPostgresRepository = ({ restaurantId, db }: { restaurantId: s
       }
     },
 
-    async getStaffGuard() {
-      const [row] = await db
-        .select({ failedAttempts: restaurants.staffFailedAttempts, lockedUntil: restaurants.staffLockedUntil })
-        .from(restaurants)
-        .where(eq(restaurants.id, restaurantId));
-      return {
-        failedAttempts: row?.failedAttempts ?? 0,
-        ...(row?.lockedUntil != null && { lockedUntil: row.lockedUntil }),
-      };
+    // Um UPDATE só: a linha do restaurante fica travada durante ele, então duas tentativas ao
+    // mesmo tempo nunca leem a mesma contagem. Sem linha de volta, o login está bloqueado.
+    async claimStaffPinAttempt(nowMs, { max, lockMs }) {
+      const reachesMax = sql`${restaurants.staffFailedAttempts} + 1 >= ${max}`;
+      const rows = await db
+        .update(restaurants)
+        .set({
+          staffFailedAttempts: sql`case when ${reachesMax} then 0 else ${restaurants.staffFailedAttempts} + 1 end`,
+          staffLockedUntil: sql`case when ${reachesMax} then ${nowMs + lockMs}::bigint else null end`,
+        })
+        .where(
+          and(
+            eq(restaurants.id, restaurantId),
+            or(isNull(restaurants.staffLockedUntil), lte(restaurants.staffLockedUntil, nowMs)),
+          ),
+        )
+        .returning({ id: restaurants.id });
+      return rows.length > 0;
     },
 
-    async saveStaffGuard(guard) {
+    async resetStaffPinAttempts() {
       await db
         .update(restaurants)
-        .set({ staffFailedAttempts: guard.failedAttempts, staffLockedUntil: guard.lockedUntil ?? null })
-        .where(eq(restaurants.id, restaurantId));
+        .set({ staffFailedAttempts: 0, staffLockedUntil: null })
+        .where(
+          and(
+            eq(restaurants.id, restaurantId),
+            or(gt(restaurants.staffFailedAttempts, 0), isNotNull(restaurants.staffLockedUntil)),
+          ),
+        );
     },
   };
 };

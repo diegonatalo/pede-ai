@@ -15,6 +15,7 @@ import { generateJoinCode } from "@/lib/join-code";
 import { parseMenuChange } from "@/lib/menu-editor";
 import { computeDayReport } from "@/lib/metrics";
 import { MAX_PERIOD_DAYS } from "@/lib/periods";
+import type { FailureGuard } from "@/lib/rate-limit";
 import { reportRows } from "@/lib/report-rows";
 import { ownerStaffIdFor } from "@/lib/restaurant-template";
 import type { CallStatus, ItemStatus, StaffMember, TabStatus } from "@/types/domain";
@@ -25,17 +26,30 @@ import type { RestaurantSettings, Store } from "@/types/store";
 /** O gerente pode usar qualquer tela; as outras pessoas, só a do próprio papel. */
 const canUseScreen = (member: StaffMember, screen: StaffRole) => member.role === screen || member.role === "manager";
 
-/** Entra numa tela da equipe com o PIN pessoal. O cookie guarda quem entrou em cada tela. */
+/** O texto padrão do bloqueio fala com o cliente da mesa; aqui quem lê é a equipe. */
+export const STAFF_LOCKED_MESSAGE = "Muitos PINs errados. Espere alguns minutos e confira o seu PIN com o gerente.";
+const staffLocked = () => error("locked", { body: { error: "locked", message: STAFF_LOCKED_MESSAGE } });
+
+/**
+ * Entra numa tela da equipe com o PIN pessoal. O cookie guarda quem entrou em cada tela.
+ * `guard` limita os PINs errados de um mesmo endereço, para uma pessoa sozinha não esgotar
+ * as tentativas do restaurante e travar o login de toda a equipe.
+ */
 export const staffLogin = async (
   store: Store,
   identity: StaffIdentity | null,
   body: unknown,
   now: number,
   restaurantId: string,
+  guard?: FailureGuard,
 ): Promise<ApiResult> => {
   if (!isRecord(body) || !isStaffRole(body.role) || typeof body.pin !== "string") return error("invalid_input");
+  if (guard && (await guard.isBlocked())) return staffLocked();
   const result = await store.verifyStaffPin(body.pin.trim());
-  if (!result.ok) return error(result.error);
+  if (!result.ok) {
+    if (result.error === "wrong_pin") await guard?.recordFailure();
+    return result.error === "locked" ? staffLocked() : error(result.error);
+  }
   const member = result.value;
   if (!canUseScreen(member, body.role)) return error("wrong_screen");
   const seats = { ...(identity?.seats ?? {}), [seatKey(restaurantId, body.role)]: { id: member.id, name: member.name } };

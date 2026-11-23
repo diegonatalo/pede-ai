@@ -244,8 +244,14 @@ export type Repository = {
   insertStaff(member: StaffMember, pinKey: string, event: NewEvent): Promise<boolean>;
   /** Atualiza a pessoa; `pinKey` nulo mantém o PIN. `false` se o PIN novo já é de outra pessoa. */
   updateStaff(member: StaffMember, pinKey: string | null, event: NewEvent): Promise<boolean>;
-  getStaffGuard(): Promise<StaffGuard>;
-  saveStaffGuard(guard: StaffGuard): Promise<void>;
+  /**
+   * Reserva uma tentativa de PIN da equipe, numa operação só: `false` se o login está bloqueado.
+   * A tentativa número `max` ainda é conferida e bloqueia o login por `lockMs`. Reservar antes de
+   * conferir é o que limita as tentativas mesmo quando muitas chegam ao mesmo tempo.
+   */
+  claimStaffPinAttempt(nowMs: number, limit: { max: number; lockMs: number }): Promise<boolean>;
+  /** Zera a contagem depois de um PIN certo. */
+  resetStaffPinAttempts(): Promise<void>;
 };
 
 /** Restaurante no cadastro geral (sem os dados de dentro dele). */

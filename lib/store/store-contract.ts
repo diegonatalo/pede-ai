@@ -460,13 +460,33 @@ export const describeStoreContract = (makeStore: (options: EngineOptions) => Sto
 
     it("bloqueia o login da equipe depois de muitos erros seguidos, por alguns minutos", async () => {
       const { store, advance } = setup();
-      for (let attempt = 1; attempt < 20; attempt += 1) {
+      for (let attempt = 1; attempt <= 20; attempt += 1) {
         expect(errorOf(await store.verifyStaffPin("9999"))).toBe("wrong_pin");
       }
       expect(errorOf(await store.verifyStaffPin("9999"))).toBe("locked");
       expect(errorOf(await store.verifyStaffPin("2222"))).toBe("locked");
       advance(2);
       expect(unwrap(await store.verifyStaffPin("2222")).role).toBe("waiter");
+    });
+
+    it("um PIN certo zera a contagem de erros", async () => {
+      const { store } = setup();
+      for (let attempt = 1; attempt <= 19; attempt += 1) await store.verifyStaffPin("9999");
+      expect(unwrap(await store.verifyStaffPin("2222")).role).toBe("waiter");
+      for (let attempt = 1; attempt <= 20; attempt += 1) {
+        expect(errorOf(await store.verifyStaffPin("9999"))).toBe("wrong_pin");
+      }
+      expect(errorOf(await store.verifyStaffPin("9999"))).toBe("locked");
+    });
+
+    it("muitas tentativas ao mesmo tempo não passam do limite", async () => {
+      const { store } = setup();
+      const pins = Array.from({ length: 200 }, (_, i) => String(900000 + i));
+      const results = await Promise.all(pins.map((pin) => store.verifyStaffPin(pin)));
+      // só 20 PINs chegam a ser conferidos; as outras tentativas encontram o login bloqueado
+      expect(results.filter((result) => errorOf(result) === "wrong_pin")).toHaveLength(20);
+      expect(results.filter((result) => errorOf(result) === "locked")).toHaveLength(180);
+      expect(errorOf(await store.verifyStaffPin("2222"))).toBe("locked");
     });
 
     it("cadastra a pessoa com um PIN novo, sorteando outro se o primeiro já for de alguém", async () => {
