@@ -18,6 +18,9 @@ export type RateLimiter = {
 
 export type RateLimitConfig = { failures: number; windowMs: number };
 
+/** Limite de erros de quem está tentando (o endereço de internet), já com a chave dele. */
+export type FailureGuard = { isBlocked: () => Promise<boolean>; recordFailure: () => Promise<void> };
+
 export type Attempt = { key: string; nowMs: number; windowMs: number; max: number };
 
 /**

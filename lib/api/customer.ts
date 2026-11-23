@@ -1,6 +1,7 @@
 import { isRecord, optionalString } from "@/lib/api/body";
 import { IDENTITY_TTL_MS, type CustomerIdentity } from "@/lib/api/identity";
 import { error, fromResult, success, type ApiResult } from "@/lib/api/result";
+import type { FailureGuard } from "@/lib/rate-limit";
 import { customerView, tabOfItem } from "@/lib/views";
 import type { CallReason, CallStatus, ItemStatus, TabStatus } from "@/types/domain";
 import type { SessionSnapshot, Store } from "@/types/store";
@@ -37,7 +38,7 @@ export const getTableStatus = async (store: Store, tableId: string): Promise<Api
 };
 
 /** Limite de códigos errados de quem está tentando (o endereço de internet), em todas as mesas. */
-export type JoinGuard = { isBlocked: () => Promise<boolean>; recordFailure: () => Promise<void> };
+export type JoinGuard = FailureGuard;
 
 export const joinTable = async (
   store: Store,

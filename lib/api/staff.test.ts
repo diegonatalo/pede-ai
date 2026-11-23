@@ -22,10 +22,11 @@ import {
   setTeamActive,
   staffLogin,
   staffLogout,
+  STAFF_LOCKED_MESSAGE,
   updateSettings,
 } from "@/lib/api/staff";
 import { SAMPLE_PINS } from "@/lib/seed-data";
-import { createMemoryStore } from "@/lib/store/memory";
+import { createMemoryRateLimiter, createMemoryStore } from "@/lib/store/memory";
 import type { OrderItem, Tab, TableSession } from "@/types/domain";
 import type { SessionSnapshot } from "@/types/store";
 
@@ -51,6 +52,25 @@ describe("login da equipe", () => {
     expect(errorOf(await staffLogin(store, null, { role: "manager", pin: SAMPLE_PINS.waiter }, NOW, "demo"))).toBe(
       "wrong_screen",
     );
+  });
+
+  it("conta os PINs errados de quem tenta e barra quem passou do limite, mesmo com o PIN certo", async () => {
+    const store = createMemoryStore();
+    const limiter = createMemoryRateLimiter({ failures: 2, windowMs: 60_000 });
+    const guard = {
+      isBlocked: () => limiter.isBlocked("staff-pin:x", NOW),
+      recordFailure: () => limiter.recordFailure("staff-pin:x", NOW),
+    };
+    const login = (pin: string) => staffLogin(store, null, { role: "waiter", pin }, NOW, "demo", guard);
+    // PIN certo não conta como erro.
+    expect(errorOf(await login(SAMPLE_PINS.waiter))).toBe("ok");
+    expect(errorOf(await login("9999"))).toBe("wrong_pin");
+    expect(errorOf(await login("9998"))).toBe("wrong_pin");
+    const blocked = await login(SAMPLE_PINS.waiter);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toEqual({ error: "locked", message: STAFF_LOCKED_MESSAGE });
+    // Barrado pelo endereço, nem chega a gastar as tentativas do restaurante: outra pessoa ainda entra.
+    expect(errorOf(await staffLogin(store, null, { role: "waiter", pin: SAMPLE_PINS.waiter }, NOW, "demo"))).toBe("ok");
   });
 
   it("recusa PIN errado e papel de cliente", async () => {

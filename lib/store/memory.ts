@@ -235,12 +235,17 @@ export const createMemoryRepository = (world: MemoryWorld, restaurantId: string)
       return true;
     },
 
-    async getStaffGuard() {
-      return structuredClone(state().guard);
+    // Sem `await` entre ler e gravar: no processo, cada reserva acontece inteira, uma de cada vez.
+    async claimStaffPinAttempt(nowMs, { max, lockMs }) {
+      const { guard } = state();
+      if (guard.lockedUntil !== undefined && guard.lockedUntil > nowMs) return false;
+      const attempts = guard.failedAttempts + 1;
+      state().guard = attempts >= max ? { failedAttempts: 0, lockedUntil: nowMs + lockMs } : { failedAttempts: attempts };
+      return true;
     },
 
-    async saveStaffGuard(next) {
-      state().guard = structuredClone(next);
+    async resetStaffPinAttempts() {
+      state().guard = { failedAttempts: 0 };
     },
   };
 };
